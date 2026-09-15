@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POLY-TRACT // GESTURE PHYSICS ENGINE</title>
+    <title>POLY-TRACT // GESTURE PHYSICS</title>
     
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     
@@ -14,13 +13,20 @@
     <script src="https://cdn.jsdelivr.net/npm/d3-polygon@3.0.1/dist/d3-polygon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
     
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
     <style>
         :root {
             --bg: #0a0a0a;
             --fg: #e0e0e0;
-            --accent: #00ff9d;
+            --accent: #0080ff; /* Electric Blue */
             --border: #1f1f1f;
             --danger: #ff3333;
+            --clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -33,31 +39,86 @@
             height: 100vh;
             width: 100vw;
             position: fixed;
+            touch-action: none;
+        }
+        
+        /* BOOT SCREEN */
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .boot-logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            color: var(--fg);
+        }
+        
+        .boot-btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 16px 48px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            clip-path: var(--clip-path);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .boot-btn:active {
+            background: rgba(0, 128, 255, 0.2);
+        }
+        
+        /* MAIN LAYOUT */
+        #app-shell {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
         
         #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
+            flex: 1;
+            position: relative;
+            background: var(--bg);
         }
         
-        canvas { display: block; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
+        #video-feed { opacity: 0.2; transform: scaleX(-1); } /* Mirror */
         
-        .ui-layer {
-            position: absolute;
-            z-index: 10;
-            pointer-events: none;
-        }
-        
-        #header {
-            top: 20px;
-            left: 20px;
+        /* RIGHT SIDEBAR */
+        #sidebar {
+            width: 240px;
+            background: #050505;
+            border-left: 1px solid var(--border);
             display: flex;
+            flex-direction: column;
+            transition: width 0.3s cubic-bezier(0.7, 0, 0.3, 1);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        #sidebar.collapsed { width: 48px; }
+        
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 12px;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
         }
         
         .logo-mark {
@@ -67,80 +128,205 @@
             clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
         }
         
-        h1 {
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
+        .collapse-btn {
+            background: none;
+            border: none;
+            color: var(--fg);
+            cursor: pointer;
             font-size: 1.2rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
         }
         
+        .sidebar-content {
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--fg);
+            padding: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            clip-path: var(--clip-path);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .action-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+        
+        .panel-title {
+            font-size: 0.65rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .gesture-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.75rem;
+        }
+        
+        .gesture-state {
+            color: var(--accent);
+            font-weight: 700;
+        }
+        
+        /* STATUS TERMINAL */
         #status-terminal {
+            position: absolute;
             bottom: 20px;
             left: 20px;
-            right: 20px;
+            width: calc(100% - 40px);
+            max-width: 400px;
             background: rgba(10, 10, 10, 0.85);
             border: 1px solid var(--border);
             padding: 12px;
             font-size: 0.75rem;
             line-height: 1.4;
             backdrop-filter: blur(8px);
-            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
-            max-height: 150px;
+            clip-path: var(--clip-path);
+            max-height: 100px;
             overflow: hidden;
+            z-index: 10;
         }
         
         .status-line { display: flex; gap: 8px; opacity: 0.8; }
         .status-line.error { color: var(--danger); opacity: 1; }
         .status-line.success { color: var(--accent); opacity: 1; }
         .timestamp { color: #555; }
-        
-        .action-btn {
-            pointer-events: auto;
-            background: transparent;
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 8px 16px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-            transition: background 0.1s ease;
-        }
-        
-        .action-btn:active { background: rgba(0, 255, 157, 0.2); }
-        
-        #controls { bottom: 180px; left: 20px; display: flex; gap: 10px; }
     </style>
 </head>
 <body>
-    <div id="canvas-container">
-        <canvas id="physics-canvas"></canvas>
+    <!-- BOOT SCREEN -->
+    <div id="boot-screen">
+        <div class="boot-logo">POLY-TRACT</div>
+        <button class="boot-btn" id="init-btn">INTELLIGENCE</button>
     </div>
-    
-    <div id="header" class="ui-layer">
-        <div class="logo-mark"></div>
-        <h1>POLY-TRACT</h1>
-    </div>
-    
-    <div id="controls" class="ui-layer">
-        <button class="action-btn" id="btn-clear">PURGE</button>
-    </div>
-    
-    <div id="status-terminal" class="ui-layer">
-        <div id="log-output"></div>
+
+    <!-- MAIN APPLICATION -->
+    <div id="app-shell">
+        <div id="canvas-container">
+            <video id="video-feed" autoplay playsinline></video>
+            <canvas id="physics-canvas"></canvas>
+            
+            <div id="status-terminal">
+                <div id="log-output"></div>
+            </div>
+        </div>
+        
+        <!-- RIGHT SIDEBAR -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-mark"></div>
+                <button class="collapse-btn" id="toggle-sidebar">⟨</button>
+            </div>
+            
+            <div class="sidebar-content">
+                <button class="action-btn" id="btn-camera">START CAMERA</button>
+                <button class="action-btn" id="btn-fullscreen">FULLSCREEN</button>
+                <button class="action-btn" id="btn-clear">PURGE</button>
+                
+                <div class="panel-title">GESTURE PROTOCOL</div>
+                <div class="gesture-item">
+                    <span>PINCH</span>
+                    <span class="gesture-state">DRAW</span>
+                </div>
+                <div class="gesture-item">
+                    <span>PEACE</span>
+                    <span class="gesture-state">INstantiate</span>
+                </div>
+                <div class="gesture-item">
+                    <span>OPEN PALM</span>
+                    <span class="gesture-state">ERASE</span>
+                </div>
+                
+                <div class="panel-title">SYSTEM STATE</div>
+                <div id="system-state" style="font-size: 0.7rem; color: #888;">
+                    MEDIAPIPE: IDLE<br>
+                    FILTER: ONE-EURO<br>
+                    DECOMP: READY
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        // =================
         // ENGINE STATE
+        // =================
         const Engine = {
             canvas: null,
             ctx: null,
             dimensions: { w: 0, h: 0 },
-            libraries: { decomp: false, d3: false, glm: false }
+            hands: null,
+            camera: null,
+            video: null,
+            drawingPath: [],
+            physicsBodies: [],
+            currentGesture: 'NONE',
+            isDrawing: false
         };
+
+        // =================
+        // ONE EURO FILTER (Smoothening)
+        // =================
+        class OneEuroFilter {
+            constructor(freq = 60, minCutoff = 1.0, beta = 0.0, dCutoff = 1.0) {
+                this.freq = freq;
+                this.minCutoff = minCutoff;
+                this.beta = beta;
+                this.dCutoff = dCutoff;
+                this.x = null;
+                this.dx = 0;
+                this.lastTime = null;
+            }
+            
+            alpha(t) {
+                const tau = 1.0 / (2 * Math.PI * t);
+                return 1.0 / (1.0 + tau);
+            }
+            
+            filter(x) {
+                const now = Date.now();
+                const t = (this.lastTime) ? (now - this.lastTime) / 1000.0 : 1.0 / this.freq;
+                this.lastTime = now;
+                
+                if (this.x === null) {
+                    this.x = x;
+                    return x;
+                }
+                
+                const dx = (x - this.x) / t;
+                const aD = this.alpha(this.dCutoff);
+                this.dx = aD * dx + (1 - aD) * this.dx;
+                
+                const cutoff = this.minCutoff + this.beta * Math.abs(this.dx);
+                const a = this.alpha(cutoff);
+                this.x = a * x + (1 - a) * this.x;
+                
+                return this.x;
+            }
+        }
         
+        let smoothFilter = new OneEuroFilter(60, 0.5, 0.5);
+
+        // =================
+        // UTILITY: LOGGING
+        // =================
         const log = (msg, type = 'info') => {
             const output = document.getElementById('log-output');
             const time = new Date().toTimeString().split(' ')[0];
@@ -148,35 +334,58 @@
             line.className = `status-line ${type}`;
             line.innerHTML = `<span class="timestamp">[${time}]</span> <span>${msg}</span>`;
             output.prepend(line);
-            while(output.children.length > 5) output.removeChild(output.lastChild);
+            while(output.children.length > 4) output.removeChild(output.lastChild);
         };
-        
+
+        // =================
+        // CORE INIT
+        // =================
         function initCore() {
             Engine.canvas = document.getElementById('physics-canvas');
             Engine.ctx = Engine.canvas.getContext('2d');
+            Engine.video = document.getElementById('video-feed');
+            
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            // Verify dependencies (No Fake Data Policy)
-            if (typeof decomp !== 'undefined') {
-                Engine.libraries.decomp = true;
-                log('POLY-DECOMP: INITIALIZED', 'success');
-            } else { log('POLY-DECOMP: FAILED TO LOAD', 'error'); }
+            // UI Events
+            document.getElementById('init-btn').addEventListener('click', enterApp);
+            document.getElementById('toggle-sidebar').addEventListener('click', toggleSidebar);
+            document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+            document.getElementById('btn-camera').addEventListener('click', initMediaPipe);
+            document.getElementById('btn-clear').addEventListener('click', purgeCanvas);
             
-            if (typeof d3 !== 'undefined') {
-                Engine.libraries.d3 = true;
-                log('D3-POLYGON: INITIALIZED', 'success');
-            } else { log('D3-POLYGON: FAILED TO LOAD', 'error'); }
-            
-            if (typeof glMatrix !== 'undefined') {
-                Engine.libraries.glm = true;
-                log('GL-MATRIX: INITIALIZED', 'success');
-            } else { log('GL-MATRIX: FAILED TO LOAD', 'error'); }
-            
-            log('SYSTEM READY. AWAITING MEDIAPIPE SIGNAL.', 'success');
+            log('SYSTEM READY. AWAITING CAMERA.');
             drawGrid();
+            renderLoop();
         }
-        
+
+        function enterApp() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => log(`FS ERR: ${err.message}`, 'error'));
+            }
+            document.getElementById('boot-screen').style.display = 'none';
+            document.getElementById('app-shell').style.opacity = '1';
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const btn = document.getElementById('toggle-sidebar');
+            sidebar.classList.toggle('collapsed');
+            btn.innerText = sidebar.classList.contains('collapsed') ? '⟩' : '⟨';
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                document.getElementById('btn-fullscreen').classList.add('active');
+            } else {
+                document.exitFullscreen();
+                document.getElementById('btn-fullscreen').classList.remove('active');
+            }
+        }
+
         function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
             const rect = document.getElementById('canvas-container').getBoundingClientRect();
@@ -186,10 +395,211 @@
             Engine.canvas.style.height = `${rect.height}px`;
             Engine.ctx.scale(dpr, dpr);
             Engine.dimensions = { w: rect.width, h: rect.height };
+            
+            // Video sizing
+            Engine.video.style.width = `${rect.width}px`;
+            Engine.video.style.height = `${rect.height}px`;
+            
             drawGrid();
         }
+
+        // =================
+        // MEDIAPIPE INTEGRATION
+        // =================
+        function initMediaPipe() {
+            const btn = document.getElementById('btn-camera');
+            if (Engine.hands) return;
+            
+            btn.innerText = 'LOADING...';
+            log('INITIALIZING MEDIAPIPE WASM...', 'success');
+            
+            Engine.hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+            
+            Engine.hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+            
+            Engine.hands.onResults(onHandResults);
+            
+            Engine.camera = new Camera(Engine.video, {
+                onFrame: async () => {
+                    await Engine.hands.send({ image: Engine.video });
+                },
+                width: 1280,
+                height: 720
+            });
+            
+            Engine.camera.start().then(() => {
+                btn.innerText = 'CAMERA ACTIVE';
+                btn.classList.add('active');
+                log('MEDIAPIPE: ACTIVE', 'success');
+            }).catch(err => {
+                log(`CAMERA FAIL: ${err.message}`, 'error');
+                btn.innerText = 'CAMERA DENIED';
+            });
+        }
+
+        // =================
+        // GESTURE LOGIC
+        // =================
+        function onHandResults(results) {
+            drawGrid(); // Clear frame
+            
+            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+                if (Engine.isDrawing) {
+                    Engine.isDrawing = false;
+                    Engine.drawingPath = []; // Cancel drawing if hand disappears
+                }
+                Engine.currentGesture = 'NONE';
+                return;
+            }
+
+            const landmarks = results.multiHandLandmarks[0];
+            
+            // Smoothen Index Finger (Landmark 8) coordinates
+            const rawX = (1 - landmarks[8].x) * Engine.dimensions.w; // Mirror X
+            const rawY = landmarks[8].y * Engine.dimensions.h;
+            const smoothX = smoothFilter.filter(rawX);
+            const smoothY = smoothFilter.filter(rawY);
+            
+            // Detect Gestures
+            const indexTip = landmarks[8];
+            const thumbTip = landmarks[4];
+            const middleTip = landmarks[12];
+            const wrist = landmarks[0];
+            
+            // Distances (normalized)
+            const distIndexThumb = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
+            const distIndexMiddle = Math.hypot(indexTip.x - middleTip.x, indexTip.y - middleTip.y);
+            const distMiddleWrist = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+            
+            if (distIndexThumb < 0.05) {
+                Engine.currentGesture = 'PINCH';
+                handleDraw(smoothX, smoothY);
+            } else if (distIndexMiddle < 0.05 && distIndexThumb > 0.1) {
+                Engine.currentGesture = 'PEACE';
+                handleInstantiate();
+            } else if (distIndexMiddle > 0.15 && distIndexThumb > 0.15) {
+                Engine.currentGesture = 'OPEN PALM';
+                handleErase();
+            } else {
+                Engine.currentGesture = 'HOVER';
+                Engine.isDrawing = false;
+            }
+            
+            updateSystemState();
+        }
         
-        // Brutalist Grid Renderer
+        function handleDraw(x, y) {
+            if (!Engine.isDrawing) {
+                Engine.isDrawing = true;
+                Engine.drawingPath = [{x, y}];
+            } else {
+                const lastPoint = Engine.drawingPath[Engine.drawingPath.length - 1];
+                // Minimum distance check to prevent clustering
+                if (Math.hypot(x - lastPoint.x, y - lastPoint.y) > 3) {
+                    Engine.drawingPath.push({x, y});
+                }
+            }
+            
+            // Draw current path
+            Engine.ctx.beginPath();
+            Engine.ctx.moveTo(Engine.drawingPath[0].x, Engine.drawingPath[0].y);
+            for(let i=1; i<Engine.drawingPath.length; i++) {
+                Engine.ctx.lineTo(Engine.drawingPath[i].x, Engine.drawingPath[i].y);
+            }
+            Engine.ctx.strokeStyle = '#0080ff';
+            Engine.ctx.lineWidth = 2;
+            Engine.ctx.stroke();
+        }
+        
+        function handleInstantiate() {
+            if (Engine.isDrawing && Engine.drawingPath.length > 3) {
+                Engine.isDrawing = false;
+                
+                // Prepare polygon for poly-decomp
+                const pathArr = Engine.drawingPath.map(p => [p.x, p.y]);
+                
+                if (typeof decomp !== 'undefined') {
+                    const concavePoly = new decomp.Polygon(pathArr);
+                    const convexPolys = concavePoly.decomp(); // The Magic happens here
+                    
+                    // For now, just render the convex slices to prove it works
+                    convexPolys.forEach(poly => {
+                        const verts = poly.vertices;
+                        Engine.physicsBodies.push({
+                            verts: verts,
+                            x: d3.polygonCentroid(verts)[0],
+                            y: d3.polygonCentroid(verts)[1]
+                        });
+                    });
+                    
+                    log(`DECOMP: Split into ${convexPolys.length} convex shapes`, 'success');
+                } else {
+                    log('DECOMP LIBRARY MISSING', 'error');
+                }
+                
+                Engine.drawingPath = [];
+            }
+        }
+        
+        function handleErase() {
+            if (Engine.isDrawing) {
+                Engine.isDrawing = false;
+                Engine.drawingPath = [];
+                log('DRAWING CANCELLED');
+            }
+        }
+        
+        function purgeCanvas() {
+            Engine.physicsBodies = [];
+            Engine.drawingPath = [];
+            Engine.isDrawing = false;
+            drawGrid();
+            log('CANVAS PURGED', 'success');
+        }
+
+        // =================
+        // RENDER LOOP
+        // =================
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+            drawGrid();
+            
+            // Render Physics Bodies
+            Engine.physicsBodies.forEach(body => {
+                Engine.ctx.beginPath();
+                const start = body.verts[0];
+                Engine.ctx.moveTo(start[0], start[1]);
+                for(let i=1; i<body.verts.length; i++) {
+                    Engine.ctx.lineTo(body.verts[i][0], body.verts[i][1]);
+                }
+                Engine.ctx.closePath();
+                Engine.ctx.fillStyle = 'rgba(0, 128, 255, 0.1)';
+                Engine.ctx.fill();
+                Engine.ctx.strokeStyle = '#0080ff';
+                Engine.ctx.lineWidth = 1;
+                Engine.ctx.stroke();
+            });
+            
+            // Render current drawing path
+            if (Engine.isDrawing && Engine.drawingPath.length > 1) {
+                Engine.ctx.beginPath();
+                Engine.ctx.moveTo(Engine.drawingPath[0].x, Engine.drawingPath[0].y);
+                for(let i=1; i<Engine.drawingPath.length; i++) {
+                    Engine.ctx.lineTo(Engine.drawingPath[i].x, Engine.drawingPath[i].y);
+                }
+                Engine.ctx.strokeStyle = '#0080ff';
+                Engine.ctx.lineWidth = 2;
+                Engine.ctx.stroke();
+            }
+        }
+
         function drawGrid() {
             const { w, h } = Engine.dimensions;
             Engine.ctx.clearRect(0, 0, w, h);
@@ -211,12 +621,18 @@
             }
         }
         
-        document.getElementById('btn-clear').addEventListener('click', () => {
-            drawGrid();
-            log('CANVAS PURGED', 'success');
-        });
-        
-        // Boot
+        function updateSystemState() {
+            const stateDiv = document.getElementById('system-state');
+            stateDiv.innerHTML = `
+                MEDIAPIPE: TRACKING<br>
+                FILTER: ONE-EURO<br>
+                GESTURE: ${Engine.currentGesture}<br>
+                PATH PTS: ${Engine.drawingPath.length}<br>
+                BODIES: ${Engine.physicsBodies.length}
+            `;
+        }
+
+        // BOOT
         document.addEventListener('DOMContentLoaded', initCore);
     </script>
 </body>
