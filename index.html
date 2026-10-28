@@ -1,639 +1,323 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POLY-TRACT // GESTURE PHYSICS</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    
-    <!-- Hidden Gem Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/poly-decomp@0.1.0/build/poly-decomp.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-polygon@3.0.1/dist/d3-polygon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
-    
-    <!-- MediaPipe Hands -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-
-    <style>
-        :root {
-            --bg: #0a0a0a;
-            --fg: #e0e0e0;
-            --accent: #0080ff; /* Electric Blue */
-            --border: #1f1f1f;
-            --danger: #ff3333;
-            --clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
-        }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        body {
-            background: var(--bg);
-            color: var(--fg);
-            font-family: 'JetBrains Mono', monospace;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            position: fixed;
-            touch-action: none;
-        }
-        
-        /* BOOT SCREEN */
-        #boot-screen {
-            position: fixed;
-            inset: 0;
-            background: var(--bg);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 40px;
-        }
-        
-        .boot-logo {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 3rem;
-            font-weight: 700;
-            letter-spacing: 0.2em;
-            color: var(--fg);
-        }
-        
-        .boot-btn {
-            background: transparent;
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 16px 48px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            clip-path: var(--clip-path);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .boot-btn:active {
-            background: rgba(0, 128, 255, 0.2);
-        }
-        
-        /* MAIN LAYOUT */
-        #app-shell {
-            display: flex;
-            height: 100vh;
-            width: 100vw;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-        
-        #canvas-container {
-            flex: 1;
-            position: relative;
-            background: var(--bg);
-        }
-        
-        canvas { display: block; position: absolute; top: 0; left: 0; }
-        #video-feed { opacity: 0.2; transform: scaleX(-1); } /* Mirror */
-        
-        /* RIGHT SIDEBAR */
-        #sidebar {
-            width: 240px;
-            background: #050505;
-            border-left: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            transition: width 0.3s cubic-bezier(0.7, 0, 0.3, 1);
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        
-        #sidebar.collapsed { width: 48px; }
-        
-        .sidebar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .logo-mark {
-            width: 12px;
-            height: 12px;
-            background: var(--accent);
-            clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-        }
-        
-        .collapse-btn {
-            background: none;
-            border: none;
-            color: var(--fg);
-            cursor: pointer;
-            font-size: 1.2rem;
-        }
-        
-        .sidebar-content {
-            padding: 20px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            overflow-y: auto;
-        }
-        
-        .action-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--fg);
-            padding: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            clip-path: var(--clip-path);
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        
-        .action-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .action-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-        
-        .panel-title {
-            font-size: 0.65rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            margin-top: 16px;
-            margin-bottom: 8px;
-        }
-        
-        .gesture-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.75rem;
-        }
-        
-        .gesture-state {
-            color: var(--accent);
-            font-weight: 700;
-        }
-        
-        /* STATUS TERMINAL */
-        #status-terminal {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: calc(100% - 40px);
-            max-width: 400px;
-            background: rgba(10, 10, 10, 0.85);
-            border: 1px solid var(--border);
-            padding: 12px;
-            font-size: 0.75rem;
-            line-height: 1.4;
-            backdrop-filter: blur(8px);
-            clip-path: var(--clip-path);
-            max-height: 100px;
-            overflow: hidden;
-            z-index: 10;
-        }
-        
-        .status-line { display: flex; gap: 8px; opacity: 0.8; }
-        .status-line.error { color: var(--danger); opacity: 1; }
-        .status-line.success { color: var(--accent); opacity: 1; }
-        .timestamp { color: #555; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Poly-tract</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/poly-decomp@0.1.0/build/poly-decomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+<style>
+:root{
+  --bg:#000; --panel:#111; --line:#2b2b2b; --fg:#fff; --mute:#8a8a8a; --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Figtree',system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+#board{position:relative;width:100%;height:100%;border-radius:30px;background:#e6e6e6;box-shadow:inset 0 0 0 1px var(--line);overflow:hidden;touch-action:none;isolation:isolate}
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:grayscale(1) contrast(.95) brightness(1.05);opacity:0;transition:opacity .8s var(--ease)}
+#vid.on{opacity:1}
+#milk{position:absolute;inset:0;background:rgba(255,255,255,.66);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(0,0,0,.26) 1.4px,transparent 1.8px);background-size:26px 26px;background-position:13px 13px}
+canvas.layer{position:absolute;inset:0;width:100%;height:100%}
+#cur{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid #000;
+  pointer-events:none;opacity:0;transition:opacity .2s,width .18s var(--ease),height .18s var(--ease),margin .18s var(--ease),background .18s;will-change:transform}
+#cur.on{opacity:1}
+#cur.draw{width:12px;height:12px;margin:-6px 0 0 -6px;background:#000}
+#cur.shape{border-style:dashed;width:34px;height:34px;margin:-17px 0 0 -17px}
+.glass{background:var(--panel);border:1px solid var(--line)}
+#top{position:absolute;top:16px;left:16px;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 10px;border-radius:999px;font-size:.84rem;font-weight:500}
+#top svg{width:22px;height:22px;flex:none}
+#top b{font-weight:700;letter-spacing:-.01em}
+#dotst{width:8px;height:8px;border-radius:50%;background:#4a4a4a;transition:background .25s,box-shadow .25s}
+#dotst.ok{background:#bdbdbd}
+#dotst.draw{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.22)}
+#dotst.warn{background:#7a7a7a;box-shadow:0 0 0 4px rgba(255,255,255,.1)}
+#stxt{color:var(--mute);min-width:5.5em}
+#dock{position:absolute;left:50%;bottom:18px;transform:translate(-50%,0);display:flex;align-items:center;gap:6px;padding:8px;border-radius:26px;animation:rise .9s var(--ease) both .15s}
+@keyframes rise{from{opacity:0;transform:translate(-50%,24px) scale(.96)}}
+.sep{width:1px;height:26px;background:var(--line);margin:0 4px}
+.btn{width:46px;height:46px;border-radius:18px;border:0;background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .2s,transform .2s var(--ease)}
+.btn:hover{background:#242424}
+.btn:active{transform:scale(.9)}
+.btn:focus-visible,.sw:focus-visible,#go:focus-visible,#mouse:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.btn svg{width:22px;height:22px}
+.btn.on{background:#fff;color:#000}
+.sw{width:26px;height:26px;border-radius:50%;border:0;background:var(--c);cursor:pointer;margin:0 3px;box-shadow:inset 0 0 0 1px #5a5a5a;transition:transform .25s var(--ease),box-shadow .2s}
+.sw.on{transform:scale(1.2);box-shadow:0 0 0 2px #111,0 0 0 4px #fff}
+#toast{position:absolute;left:50%;bottom:92px;transform:translate(-50%,10px);padding:9px 16px;border-radius:999px;font-size:.84rem;opacity:0;pointer-events:none;transition:all .4s var(--ease)}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#intro{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.78);z-index:5;transition:opacity .5s var(--ease),visibility .5s}
+#intro.off{opacity:0;visibility:hidden}
+.card{width:min(420px,100%);border-radius:32px;padding:28px 26px 22px}
+.card h1{font-size:1.8rem;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.card p.sub{color:var(--mute);margin:8px 0 20px;line-height:1.45;font-size:.95rem}
+.row{display:flex;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--line);font-size:.92rem}
+.row svg{width:34px;height:34px;flex:none;padding:7px;border-radius:12px;background:#222}
+.row span{color:var(--mute);margin-left:auto;text-align:right;font-size:.84rem}
+#go{width:100%;margin-top:18px;padding:15px;border:0;border-radius:18px;background:#fff;color:#000;font:700 1rem 'Figtree',sans-serif;cursor:pointer;transition:transform .2s var(--ease)}
+#go:active{transform:scale(.97)}
+#go:disabled{opacity:.6}
+#mouse{display:block;margin:12px auto 0;background:none;border:0;color:var(--mute);font:500 .86rem 'Figtree',sans-serif;cursor:pointer;padding:6px}
+@media(max-width:560px){.sw{width:22px;height:22px;margin:0 1px}.btn{width:40px;height:40px}.sep{margin:0 1px}#dock{gap:2px;padding:6px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
+</style>
 </head>
 <body>
-    <!-- BOOT SCREEN -->
-    <div id="boot-screen">
-        <div class="boot-logo">POLY-TRACT</div>
-        <button class="boot-btn" id="init-btn">INTELLIGENCE</button>
+<main id="board">
+  <video id="vid" autoplay playsinline muted></video>
+  <div id="milk"></div>
+  <div id="dots"></div>
+  <canvas class="layer" id="hand"></canvas>
+  <canvas class="layer" id="ink"></canvas>
+  <canvas class="layer" id="live"></canvas>
+  <div id="cur"></div>
+
+  <div id="top" class="glass">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5 21 8v8l-9 5.5L3 16V8z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="m3 8 9 5.5L21 8M12 13.5v8" stroke="#fff" stroke-width="1.4" stroke-linejoin="round" opacity=".5"/></svg>
+    <b>Poly-tract</b><i id="dotst"></i><span id="stxt">Camera off</span>
+  </div>
+
+  <div id="dock" class="glass" role="toolbar" aria-label="Whiteboard tools">
+    <button class="btn" id="bcam" title="Camera" aria-label="Toggle camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h7A2.5 2.5 0 0 1 15 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 3 15.5z"/><path d="m15 10.5 5-2.5v8l-5-2.5"/></svg></button>
+    <i class="sep"></i>
+    <div id="sws"></div>
+    <i class="sep"></i>
+    <button class="btn" id="bundo" title="Undo" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="btn" id="bclr" title="Clear board" aria-label="Clear board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l.8 12.5h9.4L17.5 7"/></svg></button>
+    <button class="btn" id="bfs" title="Fullscreen" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+  <div id="toast" class="glass" role="status"></div>
+
+  <div id="intro">
+    <div class="card glass">
+      <h1>Write in the air</h1>
+      <p class="sub">Face the camera, keep your hand in view, and draw on the board without touching it.</p>
+      <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v10"/><path d="M8.5 13v3.5a3.5 3.5 0 0 0 7 0V13" opacity=".5"/></svg>Index finger up<span>Write</span></div>
+      <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v10M15 3v10"/><path d="M7 13v3.5a5 5 0 0 0 10 0V13" opacity=".5"/></svg>Two fingers<span>Turn last stroke into a shape</span></div>
+      <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M6 4v9M10 3v10M14 3v10M18 4v9"/><path d="M5 13v2.5a7 7 0 0 0 14 0V13" opacity=".5"/></svg>Open palm, hold<span>Clear the board</span></div>
+      <button id="go">Start camera</button>
+      <button id="mouse">Use mouse or touch instead</button>
     </div>
+  </div>
+</main>
 
-    <!-- MAIN APPLICATION -->
-    <div id="app-shell">
-        <div id="canvas-container">
-            <video id="video-feed" autoplay playsinline></video>
-            <canvas id="physics-canvas"></canvas>
-            
-            <div id="status-terminal">
-                <div id="log-output"></div>
-            </div>
-        </div>
-        
-        <!-- RIGHT SIDEBAR -->
-        <div id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-mark"></div>
-                <button class="collapse-btn" id="toggle-sidebar">⟨</button>
-            </div>
-            
-            <div class="sidebar-content">
-                <button class="action-btn" id="btn-camera">START CAMERA</button>
-                <button class="action-btn" id="btn-fullscreen">FULLSCREEN</button>
-                <button class="action-btn" id="btn-clear">PURGE</button>
-                
-                <div class="panel-title">GESTURE PROTOCOL</div>
-                <div class="gesture-item">
-                    <span>PINCH</span>
-                    <span class="gesture-state">DRAW</span>
-                </div>
-                <div class="gesture-item">
-                    <span>PEACE</span>
-                    <span class="gesture-state">INstantiate</span>
-                </div>
-                <div class="gesture-item">
-                    <span>OPEN PALM</span>
-                    <span class="gesture-state">ERASE</span>
-                </div>
-                
-                <div class="panel-title">SYSTEM STATE</div>
-                <div id="system-state" style="font-size: 0.7rem; color: #888;">
-                    MEDIAPIPE: IDLE<br>
-                    FILTER: ONE-EURO<br>
-                    DECOMP: READY
-                </div>
-            </div>
-        </div>
-    </div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), now=()=>performance.now();
+const board=$('#board'),inkC=$('#ink'),liveC=$('#live'),handC=$('#hand');
+const ink=inkC.getContext('2d'),live=liveC.getContext('2d'),hc=handC.getContext('2d');
+const video=$('#vid');
+video.playsInline=true;video.muted=true;
+const cur=$('#cur'),dotst=$('#dotst'),stxt=$('#stxt');
+let W=0,H=0,DPR=1;
 
-    <script>
-        // =================
-        // ENGINE STATE
-        // =================
-        const Engine = {
-            canvas: null,
-            ctx: null,
-            dimensions: { w: 0, h: 0 },
-            hands: null,
-            camera: null,
-            video: null,
-            drawingPath: [],
-            physicsBodies: [],
-            currentGesture: 'NONE',
-            isDrawing: false
-        };
+/* ---------- state ---------- */
+const COLORS=['#000000','#3d3d3d','#8a8a8a'];
+let color=COLORS[0], items=[], stroke=null, stream=null, hands=null, busy=false;
+let gest='idle',cand='idle',cnt=0,lastSeen=0,palmT=0,shapeLock=0,handDrawing=false;
 
-        // =================
-        // ONE EURO FILTER (Smoothening)
-        // =================
-        class OneEuroFilter {
-            constructor(freq = 60, minCutoff = 1.0, beta = 0.0, dCutoff = 1.0) {
-                this.freq = freq;
-                this.minCutoff = minCutoff;
-                this.beta = beta;
-                this.dCutoff = dCutoff;
-                this.x = null;
-                this.dx = 0;
-                this.lastTime = null;
-            }
-            
-            alpha(t) {
-                const tau = 1.0 / (2 * Math.PI * t);
-                return 1.0 / (1.0 + tau);
-            }
-            
-            filter(x) {
-                const now = Date.now();
-                const t = (this.lastTime) ? (now - this.lastTime) / 1000.0 : 1.0 / this.freq;
-                this.lastTime = now;
-                
-                if (this.x === null) {
-                    this.x = x;
-                    return x;
-                }
-                
-                const dx = (x - this.x) / t;
-                const aD = this.alpha(this.dCutoff);
-                this.dx = aD * dx + (1 - aD) * this.dx;
-                
-                const cutoff = this.minCutoff + this.beta * Math.abs(this.dx);
-                const a = this.alpha(cutoff);
-                this.x = a * x + (1 - a) * this.x;
-                
-                return this.x;
-            }
-        }
-        
-        let smoothFilter = new OneEuroFilter(60, 0.5, 0.5);
+/* ---------- ui helpers ---------- */
+function status(t,k){stxt.textContent=t;dotst.className=k||''}
+let tt;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2200)}
+COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='sw'+(i?'':' on');b.style.setProperty('--c',c);b.setAttribute('aria-label','Ink '+(i+1));
+  b.onclick=()=>{color=c;document.querySelectorAll('.sw').forEach(x=>x.classList.remove('on'));b.classList.add('on')};$('#sws').appendChild(b)});
 
-        // =================
-        // UTILITY: LOGGING
-        // =================
-        const log = (msg, type = 'info') => {
-            const output = document.getElementById('log-output');
-            const time = new Date().toTimeString().split(' ')[0];
-            const line = document.createElement('div');
-            line.className = `status-line ${type}`;
-            line.innerHTML = `<span class="timestamp">[${time}]</span> <span>${msg}</span>`;
-            output.prepend(line);
-            while(output.children.length > 4) output.removeChild(output.lastChild);
-        };
+function resize(){
+  const r=board.getBoundingClientRect();DPR=Math.min(window.devicePixelRatio||1,2.5);W=r.width;H=r.height;
+  for(const c of[inkC,liveC,handC]){c.width=W*DPR;c.height=H*DPR}
+  ink.setTransform(DPR,0,0,DPR,0,0);live.setTransform(DPR,0,0,DPR,0,0);hc.setTransform(DPR,0,0,DPR,0,0);redraw();
+}
+addEventListener('resize',resize);
 
-        // =================
-        // CORE INIT
-        // =================
-        function initCore() {
-            Engine.canvas = document.getElementById('physics-canvas');
-            Engine.ctx = Engine.canvas.getContext('2d');
-            Engine.video = document.getElementById('video-feed');
-            
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            
-            // UI Events
-            document.getElementById('init-btn').addEventListener('click', enterApp);
-            document.getElementById('toggle-sidebar').addEventListener('click', toggleSidebar);
-            document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
-            document.getElementById('btn-camera').addEventListener('click', initMediaPipe);
-            document.getElementById('btn-clear').addEventListener('click', purgeCanvas);
-            
-            log('SYSTEM READY. AWAITING CAMERA.');
-            drawGrid();
-            renderLoop();
-        }
+/* camera pixel -> board pixel, matching the mirrored object-fit:cover video so the pen sits on your fingertip */
+function toBoard(lx,ly){
+  const vw=video.videoWidth||16,vh=video.videoHeight||9,s=Math.max(W/vw,H/vh),dw=vw*s,dh=vh*s;
+  return[clamp((1-lx)*dw+(W-dw)/2,0,W),clamp(ly*dh+(H-dh)/2,0,H)];
+}
 
-        function enterApp() {
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => log(`FS ERR: ${err.message}`, 'error'));
-            }
-            document.getElementById('boot-screen').style.display = 'none';
-            document.getElementById('app-shell').style.opacity = '1';
-        }
+/* ---------- One Euro filter (per axis, real time deltas) ---------- */
+class OE{
+  constructor(mc=1.6,b=0.012,dc=1){this.mc=mc;this.b=b;this.dc=dc;this.p=null;this.dx=0;this.t=0}
+  a(c,te){const r=2*Math.PI*c*te;return r/(r+1)}
+  f(x,t){
+    if(this.p===null){this.p=x;this.dx=0;this.t=t;return x}
+    const te=Math.max((t-this.t)/1000,.001);this.t=t;
+    this.dx+=this.a(this.dc,te)*((x-this.p)/te-this.dx);
+    this.p+=this.a(this.mc+this.b*Math.abs(this.dx),te)*(x-this.p);return this.p;
+  }
+  reset(){this.p=null}
+}
+const fx=new OE(),fy=new OE();
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const btn = document.getElementById('toggle-sidebar');
-            sidebar.classList.toggle('collapsed');
-            btn.innerText = sidebar.classList.contains('collapsed') ? '⟩' : '⟨';
-        }
+/* ---------- ink engine ---------- */
+const ease=t=>1-Math.pow(1-t,3);
+function size(){return 5.5}
+function begin(x,y,t){stroke={k:'s',c:color,sz:size(),p:[{x,y,w:size()*.6,t}],lw:size()*.6}}
+function add(x,y,t){
+  const p=stroke.p,l=p[p.length-1],d=Math.hypot(x-l.x,y-l.y);
+  if(d<1.2)return;
+  const v=d/Math.max(t-l.t,1);
+  const target=stroke.sz*(1.35-.8*ease(clamp(v/2.4,0,1)));
+  stroke.lw+=(target-stroke.lw)*.18;
+  p.push({x,y,w:stroke.lw,t});
+}
+function paint(c,s,done){
+  const p=s.p,n=p.length;if(!n)return;
+  c.lineCap='round';c.lineJoin='round';c.strokeStyle=c.fillStyle=s.c;
+  const k=i=>{const e=Math.min(i/6,done?(n-1-i)/7:1,1);return .35+.65*ease(clamp(e,0,1))};
+  if(n<3){c.beginPath();c.arc(p[0].x,p[0].y,p[0].w*.55,0,6.283);c.fill();if(n===2){c.lineWidth=p[1].w*.9;c.beginPath();c.moveTo(p[0].x,p[0].y);c.lineTo(p[1].x,p[1].y);c.stroke()}return}
+  const m=i=>({x:(p[i].x+p[i+1].x)/2,y:(p[i].y+p[i+1].y)/2});
+  let a=p[0];
+  for(let i=0;i<n-1;i++){
+    const b=i<n-2?m(i):p[n-1],ctrl=p[i];
+    c.lineWidth=p[i].w*k(i);c.beginPath();c.moveTo(a.x,a.y);
+    if(i===0)c.lineTo(b.x,b.y);else c.quadraticCurveTo(ctrl.x,ctrl.y,b.x,b.y);
+    c.stroke();a=b;
+  }
+}
+function paintShape(c,s){
+  c.lineJoin='round';c.lineCap='round';
+  for(const poly of s.polys){c.beginPath();poly.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.closePath();
+    c.fillStyle=s.c+'2b';c.fill();c.strokeStyle=s.c;c.globalAlpha=.9;c.lineWidth=2;c.stroke();c.globalAlpha=1}
+}
+function redraw(){ink.clearRect(0,0,W,H);for(const it of items)it.k==='s'?paint(ink,it,true):paintShape(ink,it)}
+function finish(trim){
+  if(!stroke)return;
+  if(trim&&stroke.p.length>10)stroke.p.splice(-3);
+  if(stroke.p.length>=1){items.push(stroke);paint(ink,stroke,true)}
+  stroke=null;live.clearRect(0,0,W,H);
+}
 
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-                document.getElementById('btn-fullscreen').classList.add('active');
-            } else {
-                document.exitFullscreen();
-                document.getElementById('btn-fullscreen').classList.remove('active');
-            }
-        }
+/* ---------- shape: last stroke -> convex pieces ---------- */
+function makeShape(){
+  const last=items[items.length-1];
+  if(!last||last.k!=='s'||last.p.length<8){toast('Draw a stroke first');return}
+  let pts=[];for(const q of last.p){const l=pts[pts.length-1];if(!l||Math.hypot(q.x-l[0],q.y-l[1])>10)pts.push([q.x,q.y])}
+  if(pts.length<3){toast('Stroke too small');return}
+  let polys=[pts];
+  try{
+    if(typeof decomp!=='undefined'){
+      if(decomp.quickDecomp){decomp.makeCCW(pts);if(decomp.isSimple(pts)){const r=decomp.quickDecomp(pts);if(r&&r.length)polys=r}}
+      else if(decomp.Polygon){const P=new decomp.Polygon(pts.map(q=>[q[0],q[1]]));const r=P.decomp();if(r&&r.length)polys=r.map(x=>x.vertices)}
+    }
+  }catch(e){polys=[pts]}
+  items[items.length-1]={k:'sh',c:last.c,polys};redraw();
+  toast(polys.length>1?'Shape split into '+polys.length+' pieces':'Shape made');
+}
 
-        function resizeCanvas() {
-            const dpr = window.devicePixelRatio || 1;
-            const rect = document.getElementById('canvas-container').getBoundingClientRect();
-            Engine.canvas.width = rect.width * dpr;
-            Engine.canvas.height = rect.height * dpr;
-            Engine.canvas.style.width = `${rect.width}px`;
-            Engine.canvas.style.height = `${rect.height}px`;
-            Engine.ctx.scale(dpr, dpr);
-            Engine.dimensions = { w: rect.width, h: rect.height };
-            
-            // Video sizing
-            Engine.video.style.width = `${rect.width}px`;
-            Engine.video.style.height = `${rect.height}px`;
-            
-            drawGrid();
-        }
+/* ---------- gesture recognition ---------- */
+const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+function classify(l,ar){
+  const d=(a,b)=>Math.hypot((l[a].x-l[b].x)*ar,l[a].y-l[b].y);
+  const up=(t,p)=>d(t,0)>d(p,0)*1.12;
+  const i=up(8,6),m=up(12,10),r=up(16,14),pk=up(20,18);
+  if(i&&!m&&!r&&!pk)return'draw';
+  if(i&&m&&!r&&!pk)return'shape';
+  if(i&&m&&r&&pk)return'palm';
+  return'idle';
+}
+function vote(g){
+  if(g===cand)cnt++;else{cand=g;cnt=1}
+  const need=g==='draw'?2:(gest==='draw'?4:3);
+  if(cnt>=need)gest=g;
+}
+function onResults(res){
+  const t=now(),ar=(video.videoWidth||16)/(video.videoHeight||9);
+  hc.clearRect(0,0,W,H);
+  const L=res.multiHandLandmarks&&res.multiHandLandmarks[0];
+  if(!L){return}
+  if(t-lastSeen>300){fx.reset();fy.reset();cand='idle';cnt=0}
+  lastSeen=t;
+  // hand skeleton over the camera feed
+  hc.strokeStyle='rgba(0,0,0,.4)';hc.lineWidth=2;hc.lineCap='round';
+  for(const[a,b]of CONN){const p=toBoard(L[a].x,L[a].y),q=toBoard(L[b].x,L[b].y);hc.beginPath();hc.moveTo(p[0],p[1]);hc.lineTo(q[0],q[1]);hc.stroke()}
+  hc.fillStyle='rgba(0,0,0,.55)';for(const q of L){const p=toBoard(q.x,q.y);hc.beginPath();hc.arc(p[0],p[1],2.6,0,6.283);hc.fill()}
 
-        // =================
-        // MEDIAPIPE INTEGRATION
-        // =================
-        function initMediaPipe() {
-            const btn = document.getElementById('btn-camera');
-            if (Engine.hands) return;
-            
-            btn.innerText = 'LOADING...';
-            log('INITIALIZING MEDIAPIPE WASM...', 'success');
-            
-            Engine.hands = new Hands({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-            });
-            
-            Engine.hands.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.7,
-                minTrackingConfidence: 0.5
-            });
-            
-            Engine.hands.onResults(onHandResults);
-            
-            Engine.camera = new Camera(Engine.video, {
-                onFrame: async () => {
-                    await Engine.hands.send({ image: Engine.video });
-                },
-                width: 1280,
-                height: 720
-            });
-            
-            Engine.camera.start().then(() => {
-                btn.innerText = 'CAMERA ACTIVE';
-                btn.classList.add('active');
-                log('MEDIAPIPE: ACTIVE', 'success');
-            }).catch(err => {
-                log(`CAMERA FAIL: ${err.message}`, 'error');
-                btn.innerText = 'CAMERA DENIED';
-            });
-        }
+  vote(classify(L,ar));
+  const tip=toBoard(L[8].x,L[8].y),x=fx.f(tip[0],t),y=fy.f(tip[1],t);
+  cur.style.transform=`translate(${x}px,${y}px)`;cur.className='on '+(gest==='draw'?'draw':gest==='shape'?'shape':'');
+  cur.style.borderColor=color;cur.style.background=gest==='draw'?color:'transparent';
 
-        // =================
-        // GESTURE LOGIC
-        // =================
-        function onHandResults(results) {
-            drawGrid(); // Clear frame
-            
-            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-                if (Engine.isDrawing) {
-                    Engine.isDrawing = false;
-                    Engine.drawingPath = []; // Cancel drawing if hand disappears
-                }
-                Engine.currentGesture = 'NONE';
-                return;
-            }
+  if(gest==='draw'){
+    if(!stroke||!handDrawing){finish(false);begin(x,y,t);handDrawing=true}else add(x,y,t);
+    status('Writing','draw');
+  }else{
+    if(handDrawing){finish(true);handDrawing=false}
+    if(gest==='shape'){status('Shape','ok');if(t>shapeLock){makeShape();shapeLock=t+1400}}
+    else if(gest==='palm'){
+      if(!palmT)palmT=t;const f=(t-palmT)/900;status(f<1?'Hold to clear…':'Cleared','warn');
+      if(f>=1&&items.length){items=[];redraw();toast('Board cleared')}
+    }else status('Hand ready','ok');
+  }
+  if(gest!=='palm')palmT=0;
+}
 
-            const landmarks = results.multiHandLandmarks[0];
-            
-            // Smoothen Index Finger (Landmark 8) coordinates
-            const rawX = (1 - landmarks[8].x) * Engine.dimensions.w; // Mirror X
-            const rawY = landmarks[8].y * Engine.dimensions.h;
-            const smoothX = smoothFilter.filter(rawX);
-            const smoothY = smoothFilter.filter(rawY);
-            
-            // Detect Gestures
-            const indexTip = landmarks[8];
-            const thumbTip = landmarks[4];
-            const middleTip = landmarks[12];
-            const wrist = landmarks[0];
-            
-            // Distances (normalized)
-            const distIndexThumb = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
-            const distIndexMiddle = Math.hypot(indexTip.x - middleTip.x, indexTip.y - middleTip.y);
-            const distMiddleWrist = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
-            
-            if (distIndexThumb < 0.05) {
-                Engine.currentGesture = 'PINCH';
-                handleDraw(smoothX, smoothY);
-            } else if (distIndexMiddle < 0.05 && distIndexThumb > 0.1) {
-                Engine.currentGesture = 'PEACE';
-                handleInstantiate();
-            } else if (distIndexMiddle > 0.15 && distIndexThumb > 0.15) {
-                Engine.currentGesture = 'OPEN PALM';
-                handleErase();
-            } else {
-                Engine.currentGesture = 'HOVER';
-                Engine.isDrawing = false;
-            }
-            
-            updateSystemState();
-        }
-        
-        function handleDraw(x, y) {
-            if (!Engine.isDrawing) {
-                Engine.isDrawing = true;
-                Engine.drawingPath = [{x, y}];
-            } else {
-                const lastPoint = Engine.drawingPath[Engine.drawingPath.length - 1];
-                // Minimum distance check to prevent clustering
-                if (Math.hypot(x - lastPoint.x, y - lastPoint.y) > 3) {
-                    Engine.drawingPath.push({x, y});
-                }
-            }
-            
-            // Draw current path
-            Engine.ctx.beginPath();
-            Engine.ctx.moveTo(Engine.drawingPath[0].x, Engine.drawingPath[0].y);
-            for(let i=1; i<Engine.drawingPath.length; i++) {
-                Engine.ctx.lineTo(Engine.drawingPath[i].x, Engine.drawingPath[i].y);
-            }
-            Engine.ctx.strokeStyle = '#0080ff';
-            Engine.ctx.lineWidth = 2;
-            Engine.ctx.stroke();
-        }
-        
-        function handleInstantiate() {
-            if (Engine.isDrawing && Engine.drawingPath.length > 3) {
-                Engine.isDrawing = false;
-                
-                // Prepare polygon for poly-decomp
-                const pathArr = Engine.drawingPath.map(p => [p.x, p.y]);
-                
-                if (typeof decomp !== 'undefined') {
-                    const concavePoly = new decomp.Polygon(pathArr);
-                    const convexPolys = concavePoly.decomp(); // The Magic happens here
-                    
-                    // For now, just render the convex slices to prove it works
-                    convexPolys.forEach(poly => {
-                        const verts = poly.vertices;
-                        Engine.physicsBodies.push({
-                            verts: verts,
-                            x: d3.polygonCentroid(verts)[0],
-                            y: d3.polygonCentroid(verts)[1]
-                        });
-                    });
-                    
-                    log(`DECOMP: Split into ${convexPolys.length} convex shapes`, 'success');
-                } else {
-                    log('DECOMP LIBRARY MISSING', 'error');
-                }
-                
-                Engine.drawingPath = [];
-            }
-        }
-        
-        function handleErase() {
-            if (Engine.isDrawing) {
-                Engine.isDrawing = false;
-                Engine.drawingPath = [];
-                log('DRAWING CANCELLED');
-            }
-        }
-        
-        function purgeCanvas() {
-            Engine.physicsBodies = [];
-            Engine.drawingPath = [];
-            Engine.isDrawing = false;
-            drawGrid();
-            log('CANVAS PURGED', 'success');
-        }
+/* ---------- camera + MediaPipe ---------- */
+async function startCam(){
+  if(stream)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('Camera needs https','warn');toast('Open this page over https or localhost to use the camera');return}
+  status('Starting camera…','warn');$('#bcam').classList.add('on');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960},height:{ideal:540},frameRate:{ideal:30}},audio:false});
+    video.srcObject=stream;await video.play();video.classList.add('on');
+    status('Loading hand tracking…','warn');
+    if(typeof Hands==='undefined')throw new Error('Hand tracking library did not load. Check your connection.');
+    hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
+    hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.6,minTrackingConfidence:.6,selfieMode:false});
+    hands.onResults(onResults);
+    await hands.initialize();
+    status('Show your hand','ok');pump();
+  }catch(e){
+    stopCam();status('Camera unavailable','warn');
+    toast(e&&e.name==='NotAllowedError'?'Camera permission was blocked. Allow it in your browser settings.':(e.message||'Could not start the camera'));
+  }
+}
+function pump(){
+  if(!stream)return;
+  const next=()=>video.requestVideoFrameCallback?video.requestVideoFrameCallback(pump):requestAnimationFrame(pump);
+  if(busy||video.readyState<2){next();return}
+  busy=true;hands.send({image:video}).catch(()=>{}).finally(()=>{busy=false;next()});
+}
+function stopCam(){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=null;hands=null;busy=false;handDrawing=false;finish(false);gest='idle';lastSeen=0;
+  video.srcObject=null;video.classList.remove('on');hc.clearRect(0,0,W,H);
+  $('#bcam').classList.remove('on');cur.className='';status('Camera off','');
+}
 
-        // =================
-        // RENDER LOOP
-        // =================
-        function renderLoop() {
-            requestAnimationFrame(renderLoop);
-            drawGrid();
-            
-            // Render Physics Bodies
-            Engine.physicsBodies.forEach(body => {
-                Engine.ctx.beginPath();
-                const start = body.verts[0];
-                Engine.ctx.moveTo(start[0], start[1]);
-                for(let i=1; i<body.verts.length; i++) {
-                    Engine.ctx.lineTo(body.verts[i][0], body.verts[i][1]);
-                }
-                Engine.ctx.closePath();
-                Engine.ctx.fillStyle = 'rgba(0, 128, 255, 0.1)';
-                Engine.ctx.fill();
-                Engine.ctx.strokeStyle = '#0080ff';
-                Engine.ctx.lineWidth = 1;
-                Engine.ctx.stroke();
-            });
-            
-            // Render current drawing path
-            if (Engine.isDrawing && Engine.drawingPath.length > 1) {
-                Engine.ctx.beginPath();
-                Engine.ctx.moveTo(Engine.drawingPath[0].x, Engine.drawingPath[0].y);
-                for(let i=1; i<Engine.drawingPath.length; i++) {
-                    Engine.ctx.lineTo(Engine.drawingPath[i].x, Engine.drawingPath[i].y);
-                }
-                Engine.ctx.strokeStyle = '#0080ff';
-                Engine.ctx.lineWidth = 2;
-                Engine.ctx.stroke();
-            }
-        }
+/* ---------- mouse / touch fallback ---------- */
+let ptr=false;
+liveC.addEventListener('pointerdown',e=>{if(stream)return;ptr=true;liveC.setPointerCapture(e.pointerId);const r=board.getBoundingClientRect();begin(e.clientX-r.left,e.clientY-r.top,now())});
+liveC.addEventListener('pointermove',e=>{if(!ptr)return;const r=board.getBoundingClientRect();for(const q of(e.getCoalescedEvents?e.getCoalescedEvents():[e]))add(q.clientX-r.left,q.clientY-r.top,now())});
+const up=()=>{if(ptr){ptr=false;finish(false)}};liveC.addEventListener('pointerup',up);liveC.addEventListener('pointercancel',up);
 
-        function drawGrid() {
-            const { w, h } = Engine.dimensions;
-            Engine.ctx.clearRect(0, 0, w, h);
-            Engine.ctx.strokeStyle = '#111';
-            Engine.ctx.lineWidth = 1;
-            
-            const gridSize = 40;
-            for(let x = 0; x < w; x += gridSize) {
-                Engine.ctx.beginPath();
-                Engine.ctx.moveTo(x, 0);
-                Engine.ctx.lineTo(x, h);
-                Engine.ctx.stroke();
-            }
-            for(let y = 0; y < h; y += gridSize) {
-                Engine.ctx.beginPath();
-                Engine.ctx.moveTo(0, y);
-                Engine.ctx.lineTo(w, y);
-                Engine.ctx.stroke();
-            }
-        }
-        
-        function updateSystemState() {
-            const stateDiv = document.getElementById('system-state');
-            stateDiv.innerHTML = `
-                MEDIAPIPE: TRACKING<br>
-                FILTER: ONE-EURO<br>
-                GESTURE: ${Engine.currentGesture}<br>
-                PATH PTS: ${Engine.drawingPath.length}<br>
-                BODIES: ${Engine.physicsBodies.length}
-            `;
-        }
+/* ---------- render loop ---------- */
+(function loop(){
+  requestAnimationFrame(loop);
+  if(stroke){live.clearRect(0,0,W,H);paint(live,stroke,false)}
+  if(stream&&lastSeen&&now()-lastSeen>450){
+    if(handDrawing){finish(true);handDrawing=false}
+    gest='idle';cur.classList.remove('on');hc.clearRect(0,0,W,H);if(stxt.textContent!=='Show your hand')status('Show your hand','ok');
+  }
+})();
 
-        // BOOT
-        document.addEventListener('DOMContentLoaded', initCore);
-    </script>
+/* ---------- wiring ---------- */
+$('#go').onclick=async()=>{$('#go').disabled=true;$('#go').textContent='Starting…';$('#intro').classList.add('off');
+  try{await document.documentElement.requestFullscreen?.()}catch(e){}
+  await startCam();$('#go').disabled=false;$('#go').textContent='Start camera'};
+$('#mouse').onclick=()=>$('#intro').classList.add('off');
+$('#bcam').onclick=()=>stream?stopCam():startCam();
+$('#bundo').onclick=()=>{if(items.length){items.pop();redraw()}};
+$('#bclr').onclick=()=>{items=[];redraw()};
+$('#bfs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.();
+addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='z'){e.preventDefault();$('#bundo').click()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&handDrawing){finish(true);handDrawing=false}});
+resize();
+})();
+</script>
 </body>
 </html>
