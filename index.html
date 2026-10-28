@@ -2,13 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#000000">
 <title>Poly-tract</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/poly-decomp@0.1.0/build/poly-decomp.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.0/dist/perfect-freehand.js"></script>
 <style>
@@ -19,18 +16,18 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Figtree',system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
 body{position:fixed;inset:0;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
-#board{position:relative;width:100%;height:100%;border-radius:30px;background:#e6e6e6;box-shadow:inset 0 0 0 1px var(--accent-soft),0 0 0 1px var(--accent-soft);overflow:hidden;touch-action:none;isolation:isolate}
+#board{position:relative;width:100%;height:100%;border-radius:30px;background:#e6e6e6;box-shadow:inset 0 0 0 1px var(--accent-soft);overflow:hidden;touch-action:none;isolation:isolate}
 #vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:grayscale(1) contrast(.95) brightness(1.05);opacity:0;transition:opacity .8s var(--ease)}
 #vid.on{opacity:1}
 #milk{position:absolute;inset:0;background:rgba(255,255,255,.66);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(0,0,0,.26) 1.4px,transparent 1.8px);background-size:26px 26px;background-position:13px 13px}
 canvas.layer{position:absolute;inset:0;width:100%;height:100%}
-#cur{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid var(--accent);pointer-events:none;opacity:0;transition:opacity .2s,width .18s var(--ease),height .18s var(--ease),margin .18s var(--ease),background .18s,border-color .18s;will-change:transform}
+#cur{position:absolute;left:0;top:0;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;border:2px solid var(--accent);pointer-events:none;opacity:0;transition:opacity .15s,width .18s var(--ease),height .18s var(--ease),margin .18s var(--ease),background .18s,border-color .18s;will-change:transform}
 #cur.on{opacity:1}
-#cur.draw{width:14px;height:14px;margin:-7px 0 0 -7px;background:var(--accent)}
-#cur.select{border-style:dashed;width:34px;height:34px;margin:-17px 0 0 -17px}
-#cur.eraser{border-style:solid;width:40px;height:40px;margin:-20px 0 0 -20px;border-color:#fff;background:rgba(255,255,255,.2)}
-#cur.pinch{border-style:solid;width:20px;height:20px;margin:-10px 0 0 -10px;background:var(--accent)}
+#cur.draw{width:12px;height:12px;margin:-6px 0 0 -6px;background:var(--accent)}
+#cur.select{border-style:dashed;width:32px;height:32px;margin:-16px 0 0 -16px}
+#cur.eraser{width:36px;height:36px;margin:-18px 0 0 -18px;border-color:#fff;background:rgba(255,255,255,.25)}
+#cur.pinch{width:18px;height:18px;margin:-9px 0 0 -9px;background:var(--accent);border-color:#fff}
 .glass{background:var(--panel);border:1px solid var(--line)}
 #top{position:absolute;top:16px;left:16px;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 10px;border-radius:999px;font-size:.84rem;font-weight:500}
 #top svg{width:22px;height:22px;flex:none}
@@ -40,70 +37,67 @@ canvas.layer{position:absolute;inset:0;width:100%;height:100%}
 #dotst.draw{background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
 #dotst.warn{background:#7a7a7a;box-shadow:0 0 0 4px rgba(255,255,255,.1)}
 #stxt{color:var(--mute);min-width:5.5em}
-#dock{position:absolute;left:50%;bottom:18px;transform:translate(-50%,0);display:flex;align-items:center;gap:6px;padding:8px;border-radius:26px;animation:rise .9s var(--ease) both .15s;max-width:calc(100% - 32px);overflow-x:auto;scrollbar-width:none}
+#dock{position:absolute;left:50%;bottom:18px;transform:translate(-50%,0);display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:26px;animation:rise .9s var(--ease) both .15s;max-width:calc(100% - 32px);overflow-x:auto;scrollbar-width:none}
 #dock::-webkit-scrollbar{display:none}
 @keyframes rise{from{opacity:0;transform:translate(-50%,24px) scale(.96)}}
-.sep{width:1px;height:26px;background:var(--line);margin:0 4px;flex:none}
-.btn{width:46px;height:46px;border-radius:18px;border:0;background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .2s,transform .2s var(--ease);flex:none}
+.sep{width:1px;height:24px;background:var(--line);margin:0 2px;flex:none}
+.sw-row{display:flex;align-items:center;gap:4px;flex:none}
+.sw{width:24px;height:24px;border-radius:50%;border:0;background:var(--c);cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);transition:transform .2s var(--ease),box-shadow .2s;flex:none}
+.sw.on{transform:scale(1.18);box-shadow:0 0 0 2px #111,0 0 0 4px var(--accent)}
+#thk{display:flex;align-items:center;gap:6px;flex:none}
+#thk input{width:70px;-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;background:#333;outline:none}
+#thk input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 0 2px #111}
+#thk input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #111}
+.btn{width:42px;height:42px;border-radius:14px;border:0;background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .2s,transform .2s var(--ease);flex:none}
 .btn:hover{background:#242424}
 .btn:active{transform:scale(.9)}
-.btn:focus-visible,.sw:focus-visible,#go:focus-visible,#mouse:focus-visible,.tool:focus-visible,.acc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.btn svg{width:22px;height:22px}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn svg{width:20px;height:20px}
 .btn.on{background:var(--accent-grad);color:#fff}
-.sw{width:26px;height:26px;border-radius:50%;border:0;background:var(--c);cursor:pointer;margin:0 2px;box-shadow:inset 0 0 0 1px #5a5a5a;transition:transform .25s var(--ease),box-shadow .2s;flex:none}
-.sw.on{transform:scale(1.2);box-shadow:0 0 0 2px #111,0 0 0 4px var(--accent)}
-#thk{display:flex;align-items:center;gap:6px;padding:0 4px;flex:none}
-#thk input{width:80px;-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;background:#333;outline:none}
-#thk input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent-grad);cursor:pointer;box-shadow:0 0 0 2px #111}
-#thk input::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #111}
-#thk b{font-size:.74rem;color:var(--mute);min-width:18px;text-align:center}
-.tool{width:38px;height:38px;border-radius:14px;border:0;background:#1a1a1a;color:#fff;display:grid;place-items:center;cursor:pointer;transition:all .2s;flex:none}
-.tool.on{background:var(--accent-grad)}
-.tool svg{width:18px;height:18px}
-#toast{position:absolute;left:50%;bottom:92px;transform:translate(-50%,10px);padding:9px 16px;border-radius:999px;font-size:.84rem;opacity:0;pointer-events:none;transition:all .4s var(--ease);border:1px solid var(--accent-soft)}
+#toast{position:absolute;left:50%;bottom:88px;transform:translate(-50%,10px);padding:9px 16px;border-radius:999px;font-size:.84rem;opacity:0;pointer-events:none;transition:all .35s var(--ease);border:1px solid var(--accent-soft)}
 #toast.on{opacity:1;transform:translate(-50%,0)}
-#gear{position:absolute;top:16px;right:16px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:#fff;display:grid;place-items:center;cursor:pointer;transition:all .2s;z-index:11}
+#gear{position:absolute;top:16px;right:16px;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:#fff;display:grid;place-items:center;cursor:pointer;transition:all .2s;z-index:11}
 #gear:hover{background:#242424}
-#gear svg{width:20px;height:20px;transition:transform .3s}
+#gear svg{width:18px;height:18px;transition:transform .3s}
 #gear:hover svg{transform:rotate(60deg)}
-#set{position:absolute;top:0;right:0;bottom:0;width:min(360px,90%);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .4s var(--ease);z-index:10;overflow-y:auto;padding:60px 20px 30px}
+#set{position:absolute;top:0;right:0;bottom:0;width:min(320px,90%);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .4s var(--ease);z-index:10;overflow-y:auto;padding:60px 20px 30px}
 #set.on{transform:translateX(0)}
-#set h2{font-size:1.2rem;font-weight:700;margin-bottom:4px;background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
-#set .sub{color:var(--mute);font-size:.84rem;margin-bottom:20px}
-#set .grp{margin-bottom:24px}
-#set .grp h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin-bottom:10px}
-#set .row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);font-size:.92rem;gap:12px}
+#set h2{font-size:1.15rem;font-weight:700;margin-bottom:4px;background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
+#set .sub{color:var(--mute);font-size:.82rem;margin-bottom:20px}
+#set .grp{margin-bottom:22px}
+#set .grp h3{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin-bottom:10px}
+#set .row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);font-size:.9rem;gap:12px}
 #set .row:first-of-type{border-top:0}
-.acc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.acc{height:36px;border-radius:10px;border:0;background:var(--g);cursor:pointer;transition:transform .2s,box-shadow .2s;position:relative}
+.acc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.acc{height:38px;border-radius:10px;border:0;background:var(--g);cursor:pointer;transition:transform .2s,box-shadow .2s;position:relative}
 .acc.on{transform:scale(1.05);box-shadow:0 0 0 2px #111,0 0 0 4px #fff}
 .switch{position:relative;width:42px;height:24px;border-radius:12px;background:#333;cursor:pointer;transition:background .2s;flex:none}
 .switch.on{background:var(--accent)}
 .switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
 .switch.on::after{transform:translateX(18px)}
-#setclose{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;border:0;background:#222;color:#fff;cursor:pointer;font-size:1.4rem;line-height:1}
-#shapepop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);background:var(--panel);border:1px solid var(--accent-soft);border-radius:20px;padding:18px 22px;opacity:0;pointer-events:none;transition:all .3s var(--ease);z-index:8;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5);min-width:240px}
+#setclose{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:0;background:#222;color:#fff;cursor:pointer;font-size:1.3rem;line-height:1}
+#shapepop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);background:var(--panel);border:1px solid var(--accent-soft);border-radius:18px;padding:16px 20px;opacity:0;pointer-events:none;transition:all .25s var(--ease);z-index:8;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.5);min-width:220px}
 #shapepop.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
-#shapepop h4{font-size:1rem;margin-bottom:4px}
-#shapepop p{font-size:.78rem;color:var(--mute);margin-bottom:14px}
+#shapepop h4{font-size:.95rem;margin-bottom:4px}
+#shapepop p{font-size:.76rem;color:var(--mute);margin-bottom:12px}
 #shapepop .pop-btns{display:flex;gap:8px;justify-content:center}
-#shapepop button{padding:8px 16px;border-radius:12px;border:0;cursor:pointer;font:600 .86rem 'Figtree',sans-serif;transition:transform .15s}
+#shapepop button{padding:7px 14px;border-radius:10px;border:0;cursor:pointer;font:600 .82rem 'Figtree',sans-serif;transition:transform .15s}
 #shapepop button:active{transform:scale(.94)}
 #shapepop .yes{background:var(--accent-grad);color:#fff}
 #shapepop .no{background:#222;color:#fff}
 #intro{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.78);z-index:5;transition:opacity .5s var(--ease),visibility .5s;overflow-y:auto}
 #intro.off{opacity:0;visibility:hidden}
-.card{width:min(460px,100%);border-radius:32px;padding:28px 26px 22px}
-.card h1{font-size:1.8rem;font-weight:700;letter-spacing:-.03em;line-height:1.1;background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.card p.sub{color:var(--mute);margin:8px 0 16px;line-height:1.45;font-size:.95rem}
-.row-intro{display:flex;align-items:center;gap:14px;padding:9px 0;border-top:1px solid var(--line);font-size:.88rem}
-.row-intro svg{width:30px;height:30px;flex:none;padding:6px;border-radius:10px;background:#222}
-.row-intro span{color:var(--mute);margin-left:auto;text-align:right;font-size:.8rem}
-#go{width:100%;margin-top:14px;padding:15px;border:0;border-radius:18px;background:var(--accent-grad);color:#fff;font:700 1rem 'Figtree',sans-serif;cursor:pointer;transition:transform .2s var(--ease)}
+.card{width:min(420px,100%);border-radius:30px;padding:26px 24px 20px}
+.card h1{font-size:1.7rem;font-weight:700;letter-spacing:-.03em;line-height:1.1;background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.card p.sub{color:var(--mute);margin:8px 0 14px;line-height:1.45;font-size:.92rem}
+.row-intro{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:.86rem}
+.row-intro svg{width:28px;height:28px;flex:none;padding:5px;border-radius:9px;background:#222}
+.row-intro span{color:var(--mute);margin-left:auto;text-align:right;font-size:.78rem}
+#go{width:100%;margin-top:12px;padding:14px;border:0;border-radius:16px;background:var(--accent-grad);color:#fff;font:700 .96rem 'Figtree',sans-serif;cursor:pointer;transition:transform .2s var(--ease)}
 #go:active{transform:scale(.97)}
 #go:disabled{opacity:.6}
-#mouse{display:block;margin:10px auto 0;background:none;border:0;color:var(--mute);font:500 .86rem 'Figtree',sans-serif;cursor:pointer;padding:6px}
-@media(max-width:560px){.sw{width:22px;height:22px;margin:0 1px}.btn{width:40px;height:40px}.tool{width:34px;height:34px}.sep{margin:0 1px}#dock{gap:2px;padding:6px}#thk input{width:60px}}
+#mouse{display:block;margin:8px auto 0;background:none;border:0;color:var(--mute);font:500 .82rem 'Figtree',sans-serif;cursor:pointer;padding:6px}
+@media(max-width:560px){.sw{width:20px;height:20px}.btn{width:36px;height:36px}#thk input{width:50px}#dock{gap:4px;padding:6px 8px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -122,24 +116,22 @@ canvas.layer{position:absolute;inset:0;width:100%;height:100%}
     <b>Poly-tract</b><i id="dotst"></i><span id="stxt">Camera off</span>
   </div>
 
-  <button id="gear" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  <button id="gear" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 
-  <div id="dock" class="glass" role="toolbar" aria-label="Whiteboard tools">
-    <button class="btn" id="bcam" title="Camera" aria-label="Toggle camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h7A2.5 2.5 0 0 1 15 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 3 15.5z"/><path d="m15 10.5 5-2.5v8l-5-2.5"/></svg></button>
+  <div id="dock" class="glass" role="toolbar">
+    <button class="btn" id="bcam" title="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h7A2.5 2.5 0 0 1 15 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 3 15.5z"/><path d="m15 10.5 5-2.5v8l-5-2.5"/></svg></button>
     <i class="sep"></i>
-    <div id="sws"></div>
+    <div class="sw-row" id="sws"></div>
     <i class="sep"></i>
-    <div id="thk"><input type="range" id="thkIn" min="1" max="24" value="6" aria-label="Thickness"><b id="thkV">6</b></div>
+    <div id="thk"><input type="range" id="thkIn" min="1" max="20" value="5" aria-label="Thickness"></div>
     <i class="sep"></i>
-    <button class="tool on" id="t-pen" title="Pen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18"/><path d="M2 2l7.586 7.586"/></svg></button>
-    <button class="tool" id="t-pencil" title="Pencil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-    <button class="tool" id="t-marker" title="Marker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l-6 6v3h3l6-6"/><path d="M22 7l-3-3-9 9 3 3 9-9z"/></svg></button>
-    <button class="tool" id="t-eraser" title="Eraser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7l-4-4a2 2 0 0 1 0-2.83l9.17-9.17a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83L13 20"/><path d="M9 12l5 5"/></svg></button>
+    <button class="btn on" id="t-pen" title="Pen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18"/><path d="M2 2l7.586 7.586"/></svg></button>
+    <button class="btn" id="t-eraser" title="Eraser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7l-4-4a2 2 0 0 1 0-2.83l9.17-9.17a2 2 0 0 1 2.83 0l5.66 5.66a2 2 0 0 1 0 2.83L13 20"/><path d="M9 12l5 5"/></svg></button>
     <i class="sep"></i>
-    <button class="btn" id="bundo" title="Undo" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
-    <button class="btn" id="bredo" title="Redo" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
-    <button class="btn" id="bclr" title="Clear board" aria-label="Clear board"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l.8 12.5h9.4L17.5 7"/></svg></button>
-    <button class="btn" id="bfs" title="Fullscreen" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="btn" id="bundo" title="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="btn" id="bredo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+    <button class="btn" id="bclr" title="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l.8 12.5h9.4L17.5 7"/></svg></button>
+    <button class="btn" id="bfs" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
   </div>
 
   <div id="toast" class="glass" role="status"></div>
@@ -154,7 +146,7 @@ canvas.layer{position:absolute;inset:0;width:100%;height:100%}
   </div>
 
   <aside id="set">
-    <button id="setclose" aria-label="Close settings">&times;</button>
+    <button id="setclose">&times;</button>
     <h2>Settings</h2>
     <p class="sub">Personalize your canvas.</p>
     <div class="grp">
@@ -163,16 +155,11 @@ canvas.layer{position:absolute;inset:0;width:100%;height:100%}
     </div>
     <div class="grp">
       <h3>Drawing</h3>
-      <div class="row"><span>Auto-shape recognition</span><div class="switch on" id="swAuto" role="switch"></div></div>
-      <div class="row"><span>Show hand skeleton</span><div class="switch on" id="swSkel" role="switch"></div></div>
-      <div class="row"><span>Smooth writing (freehand)</span><div class="switch on" id="swSmooth" role="switch"></div></div>
-    </div>
-    <div class="grp">
-      <h3>Tracking</h3>
-      <div class="row"><span>Mirror video</span><div class="switch on" id="swMirror" role="switch"></div></div>
+      <div class="row"><span>Auto-shape recognition</span><div class="switch on" id="swAuto"></div></div>
+      <div class="row"><span>Show hand skeleton</span><div class="switch on" id="swSkel"></div></div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:6px">
-        <div style="display:flex;justify-content:space-between"><span>Steadiness</span><b id="sensV" style="color:var(--mute);font-weight:500">1.6</b></div>
-        <input type="range" id="sensIn" min="0.3" max="3" step="0.1" value="1.6" style="width:100%">
+        <div style="display:flex;justify-content:space-between"><span>Steadiness</span><b id="sensV" style="color:var(--mute);font-weight:500">1.0</b></div>
+        <input type="range" id="sensIn" min="0.4" max="2.5" step="0.1" value="1.0" style="width:100%">
       </div>
     </div>
   </aside>
@@ -182,12 +169,10 @@ canvas.layer{position:absolute;inset:0;width:100%;height:100%}
       <h1>Write in the air</h1>
       <p class="sub">Face the camera, keep your hand in view, and draw on the board without touching it.</p>
       <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v10"/><path d="M8.5 13v3.5a3.5 3.5 0 0 0 7 0V13" opacity=".5"/></svg>Index finger<span>Draw</span></div>
-      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v10M15 3v10"/><path d="M7 13v3.5a5 5 0 0 0 10 0V13" opacity=".5"/></svg>Two fingers (peace)<span>Select a shape</span></div>
-      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M21 21l-4.35-4.35"/></svg>Pinch (thumb + index)<span>Grab &amp; move selected</span></div>
+      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v10M15 3v10"/><path d="M7 13v3.5a5 5 0 0 0 10 0V13" opacity=".5"/></svg>Two fingers (peace)<span>Select</span></div>
+      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M21 21l-4.35-4.35"/></svg>Pinch (thumb + index)<span>Move selected</span></div>
       <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>Fist<span>Eraser</span></div>
-      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M6 4v9M10 3v10M14 3v10M18 4v9"/><path d="M5 13v2.5a7 7 0 0 0 14 0V13" opacity=".5"/></svg>Open palm<span>Pause (rest hand)</span></div>
-      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 11V6a2 2 0 0 1 4 0v5M13 10V4a2 2 0 0 1 4 0v6M17 10.5V6a2 2 0 0 1 4 0v8M5 12a2 2 0 1 0-4 0v6a8 8 0 0 0 8 8h2"/></svg>Three fingers<span>Undo</span></div>
-      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M7 22V11M7 11L3 5a3 3 0 0 1 6 0M7 11l4-6a3 3 0 0 1 6 0v6"/></svg>Fist + thumb up<span>Confirm auto-shape</span></div>
+      <div class="row-intro"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M6 4v9M10 3v10M14 3v10M18 4v9"/><path d="M5 13v2.5a7 7 0 0 0 14 0V13" opacity=".5"/></svg>Open palm<span>Pause</span></div>
       <button id="go">Start camera</button>
       <button id="mouse">Use mouse or touch instead</button>
     </div>
@@ -212,16 +197,13 @@ const ACCENTS = {
   amber:   { solid:'#f59e0b', soft:'rgba(245,158,11,.4)', grad:'linear-gradient(135deg,#d97706,#fbbf24)' },
   violet:  { solid:'#8b5cf6', soft:'rgba(139,92,246,.4)', grad:'linear-gradient(135deg,#7c3aed,#a78bfa)' },
   teal:    { solid:'#14b8a6', soft:'rgba(20,184,166,.4)', grad:'linear-gradient(135deg,#0d9488,#2dd4bf)' },
-  sunset:  { solid:'#f97316', soft:'rgba(249,115,22,.4)', grad:'linear-gradient(135deg,#ea580c,#fb923c)' },
-  slate:   { solid:'#64748b', soft:'rgba(100,116,139,.4)',grad:'linear-gradient(135deg,#475569,#94a3b8)' },
 };
 const COLORS = ['#000000','#ff0000','#ff7f00','#ffee00','#00cc44','#0066ff','#4b0082','#9400d3'];
 
 /* ---------- state ---------- */
 let state = {
-  color: COLORS[0], thickness: 6, tool: 'pen', accent: 'crimson',
-  autoShape: true, showSkeleton: true, smoothWriting: true,
-  mirrorVideo: true, sensitivity: 1.6,
+  color: COLORS[0], thickness: 5, tool: 'pen', accent: 'crimson',
+  autoShape: true, showSkeleton: true, sensitivity: 1.0,
 };
 try { Object.assign(state, JSON.parse(localStorage.getItem('poly-tract')||'{}')); } catch(e){}
 function saveState(){ try{ localStorage.setItem('poly-tract', JSON.stringify(state)); }catch(e){} }
@@ -230,8 +212,8 @@ let items=[], stroke=null, stream=null, hands=null, busy=false;
 let gest='idle', prevGest='idle', cand='idle', cnt=0, lastSeen=0, handDrawing=false;
 let undoStack=[], redoStack=[];
 let selectedIdx=-1, attachedIdx=-1, pinchActive=false;
-let lastGestureChange=0, lastUndoTrigger=0, lastRedoTrigger=0, lastFsTrigger=0;
-let pendingShape=null, shapePopTimer=null, eraserSessionActive=false;
+let lastGestureChange=0, eraserSessionActive=false;
+let pendingShape=null, shapePopTimer=null;
 
 /* ---------- accent ---------- */
 function applyAccent(name){
@@ -252,7 +234,7 @@ Object.entries(ACCENTS).forEach(([name,a])=>{
   accGrid.appendChild(b);
 });
 
-/* ---------- color swatches ---------- */
+/* ---------- color swatches (horizontal row) ---------- */
 const sws=$('#sws');
 COLORS.forEach((c,i)=>{
   const b=document.createElement('button');
@@ -264,33 +246,31 @@ COLORS.forEach((c,i)=>{
 });
 
 /* ---------- thickness ---------- */
-const thkIn=$('#thkIn'), thkV=$('#thkV');
-thkIn.value=state.thickness; thkV.textContent=state.thickness;
-thkIn.oninput=()=>{ state.thickness=+thkIn.value; thkV.textContent=thkIn.value; saveState(); };
+const thkIn=$('#thkIn');
+thkIn.value=state.thickness;
+thkIn.oninput=()=>{ state.thickness=+thkIn.value; saveState(); };
 
 /* ---------- tools ---------- */
-function setTool(t){ state.tool=t; $$('.tool').forEach(b=>b.classList.remove('on')); $('#t-'+t).classList.add('on'); saveState(); }
-['pen','pencil','marker','eraser'].forEach(t=>$('#t-'+t).onclick=()=>setTool(t));
+function setTool(t){ state.tool=t; $$('#t-pen,#t-eraser').forEach(b=>b.classList.remove('on')); $('#t-'+t).classList.add('on'); saveState(); }
+ $('#t-pen').onclick=()=>setTool('pen');
+ $('#t-eraser').onclick=()=>setTool('eraser');
 
 /* ---------- settings ---------- */
  $('#gear').onclick=()=>$('#set').classList.toggle('on');
  $('#setclose').onclick=()=>$('#set').classList.remove('on');
-function bindSwitch(el,key){ el.classList.toggle('on',state[key]); el.onclick=()=>{ state[key]=!state[key]; el.classList.toggle('on',state[key]); saveState(); if(key==='mirrorVideo')applyMirror(); }; }
-bindSwitch($('#swAuto'),'autoShape');
-bindSwitch($('#swSkel'),'showSkeleton');
-bindSwitch($('#swSmooth'),'smoothWriting');
-bindSwitch($('#swMirror'),'mirrorVideo');
+ $('#swAuto').classList.toggle('on',state.autoShape);
+ $('#swAuto').onclick=()=>{ state.autoShape=!state.autoShape; $('#swAuto').classList.toggle('on',state.autoShape); saveState(); };
+ $('#swSkel').classList.toggle('on',state.showSkeleton);
+ $('#swSkel').onclick=()=>{ state.showSkeleton=!state.showSkeleton; $('#swSkel').classList.toggle('on',state.showSkeleton); saveState(); };
 const sensIn=$('#sensIn'), sensV=$('#sensV');
 sensIn.value=state.sensitivity; sensV.textContent=state.sensitivity.toFixed(1);
 sensIn.oninput=()=>{ state.sensitivity=+sensIn.value; sensV.textContent=sensIn.value; fx.mc=state.sensitivity; fy.mc=state.sensitivity; saveState(); };
-function applyMirror(){ video.style.transform = state.mirrorVideo ? 'scaleX(-1)' : 'scaleX(1)'; }
 applyAccent(state.accent);
-applyMirror();
 
 /* ---------- ui helpers ---------- */
 function status(t,k){ stxt.textContent=t; dotst.className=k||''; }
 let tt;
-function toast(t){ const e=$('#toast'); e.textContent=t; e.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>e.classList.remove('on'),2200); }
+function toast(t){ const e=$('#toast'); e.textContent=t; e.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>e.classList.remove('on'),2000); }
 
 function resize(){
   const r=board.getBoundingClientRect(); DPR=Math.min(window.devicePixelRatio||1,2.5); W=r.width; H=r.height;
@@ -302,13 +282,12 @@ addEventListener('resize',resize);
 
 function toBoard(lx,ly){
   const vw=video.videoWidth||16, vh=video.videoHeight||9, s=Math.max(W/vw,H/vh), dw=vw*s, dh=vh*s;
-  const mx = state.mirrorVideo ? (1-lx) : lx;
-  return [clamp(mx*dw+(W-dw)/2,0,W), clamp(ly*dh+(H-dh)/2,0,H)];
+  return [clamp((1-lx)*dw+(W-dw)/2,0,W), clamp(ly*dh+(H-dh)/2,0,H)];
 }
 
-/* ---------- One Euro filter ---------- */
+/* ---------- One Euro filter (tuned for natural feel: low lag, smooth) ---------- */
 class OE{
-  constructor(mc=1.6,b=0.012,dc=1){ this.mc=mc; this.b=b; this.dc=dc; this.p=null; this.dx=0; this.t=0; }
+  constructor(mc=1.0,b=0.02,dc=1){ this.mc=mc; this.b=b; this.dc=dc; this.p=null; this.dx=0; this.t=0; }
   a(c,te){ const r=2*Math.PI*c*te; return r/(r+1); }
   f(x,t){
     if(this.p===null){ this.p=x; this.dx=0; this.t=t; return x; }
@@ -321,7 +300,7 @@ class OE{
 }
 const fx=new OE(state.sensitivity), fy=new OE(state.sensitivity);
 
-/* ---------- perfect-freehand integration ---------- */
+/* ---------- perfect-freehand ---------- */
 function getPF(){
   if(window.perfectFreehand && typeof window.perfectFreehand.getStroke==='function') return window.perfectFreehand.getStroke;
   if(typeof getStroke==='function') return getStroke;
@@ -329,12 +308,9 @@ function getPF(){
 }
 function buildOutline(s){
   const pf=getPF();
-  if(!pf || !state.smoothWriting) return null;
+  if(!pf) return null;
   const pts=s.p.map(p=>[p.x,p.y,p.pressure||0.5]);
-  let opts;
-  if(s.tool==='pencil') opts={size:s.sz*0.85,thinning:0.3,smoothing:0.6,streamline:0.6,simulatePressure:false};
-  else if(s.tool==='marker') opts={size:s.sz*1.7,thinning:0,smoothing:0.4,streamline:0.4,simulatePressure:false};
-  else opts={size:s.sz,thinning:0.6,smoothing:0.5,streamline:0.5,simulatePressure:false};
+  const opts={ size:s.sz, thinning:0.6, smoothing:0.5, streamline:0.4, simulatePressure:false };
   try{ return pf(pts,opts); }catch(e){ return null; }
 }
 function paintStroke(c,s){
@@ -344,23 +320,18 @@ function paintStroke(c,s){
     c.moveTo(out[0][0],out[0][1]);
     for(let i=1;i<out.length;i++) c.lineTo(out[i][0],out[i][1]);
     c.closePath();
-    const op = s.tool==='pencil'?0.85 : s.tool==='marker'?0.55 : 1.0;
-    c.globalAlpha=op; c.fillStyle=s.c; c.fill(); c.globalAlpha=1;
+    c.fillStyle=s.c; c.fill();
     return;
   }
-  paintFallback(c,s);
-}
-function paintFallback(c,s){
+  // fallback
   const p=s.p, n=p.length; if(!n) return;
   c.lineCap='round'; c.lineJoin='round'; c.strokeStyle=c.fillStyle=s.c;
-  const ease=t=>1-Math.pow(1-t,3);
-  const k=i=>{ const e=Math.min(i/6,1,1); return .35+.65*ease(clamp(e,0,1)); };
   if(n<3){ c.beginPath(); c.arc(p[0].x,p[0].y,Math.max(1,p[0].w*.55),0,6.283); c.fill(); if(n===2){ c.lineWidth=Math.max(1,p[1].w*.9); c.beginPath(); c.moveTo(p[0].x,p[0].y); c.lineTo(p[1].x,p[1].y); c.stroke(); } return; }
   const m=i=>({x:(p[i].x+p[i+1].x)/2, y:(p[i].y+p[i+1].y)/2});
   let a=p[0];
   for(let i=0;i<n-1;i++){
     const b=i<n-2?m(i):p[n-1], ctrl=p[i];
-    c.lineWidth=Math.max(1,p[i].w*k(i)); c.beginPath(); c.moveTo(a.x,a.y);
+    c.lineWidth=Math.max(1,p[i].w); c.beginPath(); c.moveTo(a.x,a.y);
     if(i===0) c.lineTo(b.x,b.y); else c.quadraticCurveTo(ctrl.x,ctrl.y,b.x,b.y);
     c.stroke(); a=b;
   }
@@ -373,11 +344,11 @@ function paintVec(c,v,highlight){
   c.strokeStyle = highlight ? ACCENTS[state.accent].solid : v.c;
   c.lineWidth = highlight ? 3 : 2;
   c.beginPath();
-  if(v.type==='circle'){ c.arc(v.cx,v.cy,Math.max(2,v.r),0,6.283); }
-  else if(v.type==='ellipse'){ c.ellipse(v.cx,v.cy,Math.max(2,v.rx),Math.max(2,v.ry),0,0,6.283); }
-  else if(v.type==='rect'){ c.rect(v.x,v.y,v.w,v.h); }
-  else if(v.type==='triangle'){ c.moveTo(v.pts[0][0],v.pts[0][1]); c.lineTo(v.pts[1][0],v.pts[1][1]); c.lineTo(v.pts[2][0],v.pts[2][1]); c.closePath(); }
-  else if(v.type==='star'){ for(let i=0;i<v.pts.length;i++){ const p=v.pts[i]; if(i===0)c.moveTo(p[0],p[1]); else c.lineTo(p[0],p[1]); } c.closePath(); }
+  if(v.type==='circle'){ c.arc(v.cx,v.cy,Math.max(2,v.r),0,6.283); c.fill(); c.stroke(); }
+  else if(v.type==='ellipse'){ c.ellipse(v.cx,v.cy,Math.max(2,v.rx),Math.max(2,v.ry),0,0,6.283); c.fill(); c.stroke(); }
+  else if(v.type==='rect'){ c.rect(v.x,v.y,v.w,v.h); c.fill(); c.stroke(); }
+  else if(v.type==='triangle'){ c.moveTo(v.pts[0][0],v.pts[0][1]); c.lineTo(v.pts[1][0],v.pts[1][1]); c.lineTo(v.pts[2][0],v.pts[2][1]); c.closePath(); c.fill(); c.stroke(); }
+  else if(v.type==='star'){ for(let i=0;i<v.pts.length;i++){ const p=v.pts[i]; if(i===0)c.moveTo(p[0],p[1]); else c.lineTo(p[0],p[1]); } c.closePath(); c.fill(); c.stroke(); }
   else if(v.type==='line' || v.type==='arrow'){
     c.moveTo(v.x1,v.y1); c.lineTo(v.x2,v.y2); c.stroke();
     if(v.type==='arrow'){
@@ -387,8 +358,6 @@ function paintVec(c,v,highlight){
       c.lineTo(v.x2-ah*Math.cos(ang+0.4), v.y2-ah*Math.sin(ang+0.4));
       c.closePath(); c.fill();
     }
-    if(highlight){ const bb=vecBBox(v); const off=8; c.strokeStyle=ACCENTS[state.accent].solid; c.lineWidth=2; c.setLineDash([4,4]); c.strokeRect(bb.x-off,bb.y-off,bb.w+off*2,bb.h+off*2); c.setLineDash([]); }
-    return;
   }
   else if(v.type==='path'){
     if(v.p.length<2) return;
@@ -398,8 +367,8 @@ function paintVec(c,v,highlight){
       c.quadraticCurveTo(v.p[i][0],v.p[i][1],mx,my);
     }
     c.lineTo(v.p[v.p.length-1][0],v.p[v.p.length-1][1]);
+    c.fill(); c.stroke();
   }
-  c.fill(); c.stroke();
   if(highlight){ const bb=vecBBox(v); const off=8; c.strokeStyle=ACCENTS[state.accent].solid; c.lineWidth=2; c.setLineDash([4,4]); c.strokeRect(bb.x-off,bb.y-off,bb.w+off*2,bb.h+off*2); c.setLineDash([]); }
 }
 function vecBBox(v){
@@ -428,13 +397,13 @@ function redraw(){
 }
 
 /* ---------- ink engine ---------- */
-function begin(x,y,t){ stroke={k:'s',c:state.color,sz:state.thickness,tool:state.tool,p:[{x,y,w:state.thickness*0.6,t,pressure:0.5}]}; }
+function begin(x,y,t){ stroke={k:'s',c:state.color,sz:state.thickness,tool:'pen',p:[{x,y,w:state.thickness*0.6,t,pressure:0.5}]}; }
 function add(x,y,t){
   const p=stroke.p, l=p[p.length-1], d=Math.hypot(x-l.x,y-l.y);
   if(d<1.2) return;
   const v=d/Math.max(t-l.t,1);
-  const target = stroke.sz * (1.35 - 0.8 * (1 - Math.pow(1-clamp(v/2.4,0,1),3)));
-  const lw = l.w + (target-l.w)*0.18;
+  const target = stroke.sz * (1.3 - 0.7 * (1 - Math.pow(1-clamp(v/2.4,0,1),3)));
+  const lw = l.w + (target-l.w)*0.2;
   const pressure = clamp(0.5 + (1 - clamp(v/3,0,1))*0.4, 0.1, 1);
   p.push({x,y,w:lw,t,pressure});
 }
@@ -446,7 +415,7 @@ function finish(trim){
 }
 
 /* ---------- undo / redo ---------- */
-function pushUndo(){ undoStack.push(JSON.stringify(items.map(it=>{ const c={...it}; delete c._lastX; delete c._lastY; return c; }))); if(undoStack.length>50) undoStack.shift(); redoStack=[]; }
+function pushUndo(){ undoStack.push(JSON.stringify(items)); if(undoStack.length>50) undoStack.shift(); redoStack=[]; }
 function undo(){ if(!undoStack.length){ toast('Nothing to undo'); return; } redoStack.push(JSON.stringify(items)); items=JSON.parse(undoStack.pop()); selectedIdx=-1; attachedIdx=-1; redraw(); }
 function redo(){ if(!redoStack.length){ toast('Nothing to redo'); return; } undoStack.push(JSON.stringify(items)); items=JSON.parse(redoStack.pop()); selectedIdx=-1; attachedIdx=-1; redraw(); }
 
@@ -536,7 +505,7 @@ function showShapePopup(idx, recognized){
   const it = items[idx];
   let cx=W/2, cy=H/2;
   if(it && it.p && it.p.length){ const ixs=it.p.map(p=>p.x), iys=it.p.map(p=>p.y); cx=(Math.min(...ixs)+Math.max(...ixs))/2; cy=(Math.min(...iys)+Math.max(...iys))/2; }
-  cx = clamp(cx, 150, W-150); cy = clamp(cy, 100, H-100);
+  cx = clamp(cx, 140, W-140); cy = clamp(cy, 100, H-100);
   shapePop.style.left = cx+'px'; shapePop.style.top = cy+'px';
   shapePop.classList.add('on');
   clearTimeout(shapePopTimer); shapePopTimer = setTimeout(hideShapePopup, 8000);
@@ -568,7 +537,7 @@ function hitTest(x,y){
   for(let i=items.length-1;i>=0;i--){
     const it=items[i];
     if(it.k==='s'){
-      for(let j=0;j<it.p.length-1;j++){ const a=it.p[j], b=it.p[j+1]; if(pointSegDist(x,y,a.x,a.y,b.x,b.y) < Math.max(8,it.sz)) return i; }
+      for(let j=0;j<it.p.length-1;j++){ const a=it.p[j], b=it.p[j+1]; if(pointSegDist(x,y,a.x,a.y,b.x,b.y) < Math.max(10,it.sz)) return i; }
     } else if(it.k==='vec'){
       const bb=vecBBox(it);
       if(x>=bb.x-5 && x<=bb.x+bb.w+5 && y>=bb.y-5 && y<=bb.y+bb.h+5){
@@ -586,7 +555,7 @@ function eraseAt(x,y){
   for(let i=items.length-1;i>=0;i--){
     const it=items[i]; let hit=false;
     if(it.k==='s'){
-      for(let j=0;j<it.p.length-1;j++){ const a=it.p[j], b=it.p[j+1]; if(pointSegDist(x,y,a.x,a.y,b.x,b.y) < Math.max(10,it.sz)){ hit=true; break; } }
+      for(let j=0;j<it.p.length-1;j++){ const a=it.p[j], b=it.p[j+1]; if(pointSegDist(x,y,a.x,a.y,b.x,b.y) < Math.max(12,it.sz)){ hit=true; break; } }
     } else if(it.k==='vec'){
       const bb=vecBBox(it);
       if(x>=bb.x-5 && x<=bb.x+bb.w+5 && y>=bb.y-5 && y<=bb.y+bb.h+5) hit=true;
@@ -601,33 +570,28 @@ function eraseAt(x,y){
   if(erased) redraw();
 }
 
-/* ---------- gestures ---------- */
+/* ---------- gestures (simpler, more natural) ---------- */
 const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
 function classify(L,ar){
   const d=(a,b)=>Math.hypot((L[a].x-L[b].x)*ar, L[a].y-L[b].y);
-  const up=(t,p)=>d(t,0)>d(p,0)*1.10;
+  const up=(t,p)=>d(t,0)>d(p,0)*1.08;  // more forgiving
   const i=up(8,6), m=up(12,10), r=up(16,14), pk=up(20,18);
   const handSize = d(0,9);
   const pinchDist = d(4,8);
-  const isPinch = pinchDist < handSize*0.28 && !m && !r && !pk;
-  const thumbOut = d(4,5) > handSize*0.55;
-  const thumbUp = L[4].y < L[5].y - 0.06;
+  const isPinch = pinchDist < handSize*0.32 && !m && !r && !pk;  // easier pinch
   if(isPinch) return 'pinch';
   if(i && !m && !r && !pk) return 'draw';
   if(i && m && !r && !pk) return 'select';
-  if(i && m && r && !pk) return 'three';
   if(i && m && r && pk) return 'palm';
-  if(!i && !m && !r && !pk){ if(thumbUp) return 'thumbup'; return 'fist'; }
-  if(!i && !m && !r && pk && thumbOut) return 'redo';
-  if(i && !m && !r && pk) return 'fullscreen';
+  if(!i && !m && !r && !pk) return 'fist';
   return 'idle';
 }
 function vote(g){
   if(g===cand) cnt++; else { cand=g; cnt=1; }
-  const need = g==='draw'?2 : (gest==='draw'?4 : 3);
-  if(cnt>=need && g!==gest && now()-lastGestureChange > 150){ gest=g; lastGestureChange=now(); }
+  const need = g==='draw'?2 : (gest==='draw'?3 : 2);  // faster transitions
+  if(cnt>=need && g!==gest && now()-lastGestureChange > 100){ gest=g; lastGestureChange=now(); }
 }
-function onGestureChange(from, to, x, y){
+function onGestureChange(from, to){
   if(from==='pinch' && to!=='pinch'){
     pinchActive=false;
     if(attachedIdx>=0 && items[attachedIdx]){ delete items[attachedIdx]._lastX; delete items[attachedIdx]._lastY; }
@@ -635,10 +599,6 @@ function onGestureChange(from, to, x, y){
   }
   if(to==='pinch' && from!=='pinch' && selectedIdx>=0) pushUndo();
   if(to==='fist' && from!=='fist') eraserSessionActive=false;
-  if(to==='three' && now()-lastUndoTrigger > 800){ undo(); lastUndoTrigger=now(); toast('Undone'); }
-  if(to==='redo' && now()-lastRedoTrigger > 800){ redo(); lastRedoTrigger=now(); toast('Redone'); }
-  if(to==='fullscreen' && now()-lastFsTrigger > 1000){ $('#bfs').click(); lastFsTrigger=now(); }
-  if(to==='thumbup' && pendingShape){ $('#sppYes').click(); }
 }
 
 function onResults(res){
@@ -655,16 +615,14 @@ function onResults(res){
     for(const q of L){ const p=toBoard(q.x,q.y); hc.beginPath(); hc.arc(p[0],p[1],2.6,0,6.283); hc.fill(); }
   }
   vote(classify(L,ar));
-  // cursor position: index tip for most gestures, pinch midpoint for pinch
   let lx, ly;
   if(gest==='pinch'){ lx=(L[4].x+L[8].x)/2; ly=(L[4].y+L[8].y)/2; }
   else { lx=L[8].x; ly=L[8].y; }
   const tip=toBoard(lx,ly);
   const x=fx.f(tip[0],t), y=fy.f(tip[1],t);
   cur.style.transform=`translate(${x}px,${y}px)`;
-  // cursor class
   let cursorClass='';
-  if(gest!=='palm'){
+  if(gest!=='palm' && gest!=='idle'){
     cursorClass='on';
     if(gest==='draw') cursorClass += state.tool==='eraser' ? ' eraser' : ' draw';
     else if(gest==='select') cursorClass += ' select';
@@ -672,7 +630,12 @@ function onResults(res){
     else if(gest==='pinch') cursorClass += ' pinch';
   }
   cur.className=cursorClass;
-  if(gest!==prevGest){ onGestureChange(prevGest, gest, x, y); prevGest=gest; }
+  if(gest!==prevGest){ onGestureChange(prevGest, gest); prevGest=gest; }
+  // finish any in-progress stroke the moment we leave draw mode
+  if(handDrawing && gest!=='draw'){
+    finish(true); handDrawing=false;
+    if(items.length && items[items.length-1].k==='s') tryAutoShape(items.length-1);
+  }
   if(gest==='draw'){
     if(state.tool==='eraser'){ eraseAt(x,y); status('Erasing','warn'); }
     else {
@@ -682,30 +645,26 @@ function onResults(res){
     }
   } else if(gest==='fist'){
     eraseAt(x,y); status('Eraser','warn');
-  } else {
-    if(handDrawing){ finish(true); handDrawing=false; if(items.length && items[items.length-1].k==='s') tryAutoShape(items.length-1); }
-    if(gest==='select'){
-      const idx=hitTest(x,y);
-      if(idx!==selectedIdx){ selectedIdx=idx; redraw(); }
-      status(idx>=0 ? 'Selected — pinch to move' : 'Select mode','ok');
-    } else if(gest==='pinch'){
-      if(selectedIdx>=0){
-        if(!pinchActive){ pinchActive=true; attachedIdx=selectedIdx; }
-        if(attachedIdx>=0 && items[attachedIdx]){
-          const it=items[attachedIdx];
-          const lastX=it._lastX ?? x, lastY=it._lastY ?? y;
-          const dx=x-lastX, dy=y-lastY;
-          if(it.k==='vec') vecTranslate(it,dx,dy);
-          else if(it.k==='s'){ for(const p of it.p){ p.x+=dx; p.y+=dy; } }
-          it._lastX=x; it._lastY=y;
-          redraw();
-        }
-        status('Moving','ok');
-      } else status('Pinch — select first','ok');
-    } else if(gest==='palm'){ status('Paused','warn'); }
-    else if(gest==='thumbup'){ if(!pendingShape) status('Thumb up','ok'); }
-    else status('Hand ready','ok');
-  }
+  } else if(gest==='select'){
+    const idx=hitTest(x,y);
+    if(idx!==selectedIdx){ selectedIdx=idx; redraw(); }
+    status(idx>=0 ? 'Selected — pinch to move' : 'Select mode','ok');
+  } else if(gest==='pinch'){
+    if(selectedIdx>=0){
+      if(!pinchActive){ pinchActive=true; attachedIdx=selectedIdx; }
+      if(attachedIdx>=0 && items[attachedIdx]){
+        const it=items[attachedIdx];
+        const lastX=it._lastX ?? x, lastY=it._lastY ?? y;
+        const dx=x-lastX, dy=y-lastY;
+        if(it.k==='vec') vecTranslate(it,dx,dy);
+        else if(it.k==='s'){ for(const p of it.p){ p.x+=dx; p.y+=dy; } }
+        it._lastX=x; it._lastY=y;
+        redraw();
+      }
+      status('Moving','ok');
+    } else status('Pinch — select first','ok');
+  } else if(gest==='palm'){ status('Paused','warn'); }
+  else status('Hand ready','ok');
 }
 
 /* ---------- camera + MediaPipe ---------- */
@@ -780,7 +739,7 @@ liveC.addEventListener('pointercancel', up);
 
 /* ---------- wiring ---------- */
  $('#go').onclick=async()=>{ $('#go').disabled=true; $('#go').textContent='Starting…'; $('#intro').classList.add('off'); try{ await document.documentElement.requestFullscreen?.(); }catch(e){} await startCam(); $('#go').disabled=false; $('#go').textContent='Start camera'; };
- $('#mouse').onclick=()=> $('#intro').classList.add('off');
+ $('#mouse').onclick=()=> $('#intro').classList.remove('off'), $('#intro').classList.add('off');
  $('#bcam').onclick=()=> stream ? stopCam() : startCam();
  $('#bundo').onclick=undo;
  $('#bredo').onclick=redo;
